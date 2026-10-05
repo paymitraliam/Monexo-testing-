@@ -11468,6 +11468,13 @@ app.get("/xxapi/admin/paymentHistory", requireAdmin, async (req2, res) => {
       if (effectivePayerStatus === 3) orderStatusLabel = "Successfully";
       else if (effectivePayerStatus === 4 || effectivePayerStatus === 5) orderStatusLabel = "Cancelled";
       else if (effectivePayerStatus === 1) orderStatusLabel = "Paying";
+      const rawCancelReason = txObj.reason_for_rejection || txObj.cancelRemark || txObj.cancel_reason || txObj.cancel_remark || txObj.adminRemark || txObj.adminReason || txObj.description || counterpartTx?.reason_for_rejection || counterpartTx?.cancelRemark || counterpartTx?.cancel_reason || "";
+      let cancelReasonStr = rawCancelReason;
+      if (!cancelReasonStr && effectivePayerStatus === 4) {
+        cancelReasonStr = "Order Expired / Cancelled by system (15-min timeout)";
+      }
+      const proofUrl = txObj.payment_slip || txObj.paymentSlip || txObj.proofUrl || txObj.proof || counterpartTx?.payment_slip || counterpartTx?.paymentSlip || "";
+      const isExpiredFlag = Boolean(txObj.isExpired || cancelReasonStr && cancelReasonStr.toLowerCase().includes("expire"));
       return {
         _id: txObj._id,
         orderId: txObj.rptNo,
@@ -11476,7 +11483,7 @@ app.get("/xxapi/admin/paymentHistory", requireAdmin, async (req2, res) => {
         type: txObj.type || "recharge",
         utr: txObj.utr || "",
         ctime: txObj.ctime || Math.floor(Date.now() / 1e3),
-        payer_status: txObj.payer_status || 1,
+        payer_status: effectivePayerStatus,
         orderStatusLabel,
         buyerPhone,
         buyerUid,
@@ -11493,6 +11500,12 @@ app.get("/xxapi/admin/paymentHistory", requireAdmin, async (req2, res) => {
         upiMatch,
         amountMatch,
         paymentSuccessStatus: effectivePayerStatus === 3,
+        payment_slip: proofUrl,
+        paymentProofUrl: proofUrl,
+        cancelRemark: cancelReasonStr,
+        reason_for_rejection: cancelReasonStr,
+        cancelReason: cancelReasonStr,
+        isExpired: isExpiredFlag,
         adminReason: txObj.adminReason || txObj.internalAdminNote || "",
         adminActionAt: txObj.adminActionAt || null
       };
@@ -11505,6 +11518,70 @@ app.get("/xxapi/admin/paymentHistory", requireAdmin, async (req2, res) => {
   } catch (err) {
     console.error("Admin Payment History Error:", err);
     return res.json({ code: 500, msg: "Internal server error: " + err.message });
+  }
+});
+app.post("/xxapi/admin/update-order-status", requireAdmin, async (req2, res) => {
+  try {
+    const { orderId, rptNo, action, reason, remark } = req2.body || {};
+    const targetRpt = String(orderId || rptNo || "").trim();
+    if (!targetRpt) {
+      return res.status(400).json({ code: 400, msg: "Order ID / rptNo is required" });
+    }
+    const cleanRpt = targetRpt.replace(/^SELL_/i, "").trim();
+    const isSellOrder = targetRpt.startsWith("SELL_");
+    const txs = await Transaction.find({
+      $or: [
+        { rptNo: cleanRpt },
+        { rptNo: `SELL_${cleanRpt}` }
+      ]
+    });
+    if (!txs || txs.length === 0) {
+      return res.status(404).json({ code: 404, msg: "Transaction order not found" });
+    }
+    const customReason = String(reason || remark || "").trim();
+    const actionUpper = String(action || "").toUpperCase();
+    for (const tx of txs) {
+      if (actionUpper === "APPROVE" || actionUpper === "COMPLETE") {
+        tx.payer_status = 3;
+        tx.reason_for_rejection = "";
+        tx.cancelRemark = "";
+        tx.adminActionAt = /* @__PURE__ */ new Date();
+        if (tx.userId) {
+          const user = await User.findById(tx.userId);
+          if (user) {
+            user.balance = (user.balance || 0) + (tx.amount || 0);
+            user.itoken = (user.itoken || 0) + (tx.amount || 0);
+            await user.save().catch(() => {
+            });
+          }
+        }
+      } else if (actionUpper === "EXPIRE") {
+        tx.payer_status = 4;
+        tx.isExpired = true;
+        const expMsg = customReason || "Order Expired (15-min timeout elapsed)";
+        tx.reason_for_rejection = expMsg;
+        tx.cancelRemark = expMsg;
+        tx.cancel_reason = expMsg;
+        tx.adminActionAt = /* @__PURE__ */ new Date();
+      } else {
+        tx.payer_status = 4;
+        const rejectMsg = customReason || "Order Cancelled / Rejected by Admin";
+        tx.reason_for_rejection = rejectMsg;
+        tx.cancelRemark = rejectMsg;
+        tx.cancel_reason = rejectMsg;
+        tx.adminActionAt = /* @__PURE__ */ new Date();
+      }
+      await tx.save().catch(() => {
+      });
+    }
+    return res.json({
+      code: 0,
+      msg: `Order ${targetRpt} status updated to ${actionUpper} successfully`,
+      data: { orderId: targetRpt, action: actionUpper, remark: customReason }
+    });
+  } catch (err) {
+    console.error("Admin Update Order Status Error:", err);
+    return res.status(500).json({ code: 500, msg: "Internal server error: " + err.message });
   }
 });
 app.get("/xxapi/admin/matchingOrders", requireAdmin, async (req2, res) => {

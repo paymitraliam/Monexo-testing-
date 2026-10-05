@@ -143,7 +143,7 @@ export default function App() {
     );
   }
 
-  const [activeTab, setActiveTab] = useState<'take-action' | 'live-logs' | 'ingestion' | 'audit' | 'guide-support' | 'linked-upi'>('guide-support');
+  const [activeTab, setActiveTab] = useState<'orders-history' | 'take-action' | 'live-logs' | 'ingestion' | 'audit' | 'guide-support' | 'linked-upi'>('orders-history');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [users, setUsers] = useState<AggregatedUser[]>([]);
   const [liveLogs, setLiveLogs] = useState<LiveLogItem[]>([]);
@@ -155,6 +155,20 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUserForAction, setSelectedUserForAction] = useState<AggregatedUser | null>(null);
   const [selectedJsonModal, setSelectedJsonModal] = useState<any | null>(null);
+
+  // Orders & Take Action History State
+  const [orders, setOrders] = useState<any[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [orderTypeFilter, setOrderTypeFilter] = useState<'all' | 'buy' | 'sell'>('all');
+  const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | 'pending' | 'success' | 'cancelled'>('all');
+  const [ordersSearchTerm, setOrdersSearchTerm] = useState('');
+
+  // Order Take Action Modal State
+  const [selectedOrderForAction, setSelectedOrderForAction] = useState<any | null>(null);
+  const [orderActionType, setOrderActionType] = useState<'APPROVE' | 'REJECT' | 'EXPIRE'>('REJECT');
+  const [orderActionRemark, setOrderActionRemark] = useState('');
+  const [submittingOrderAction, setSubmittingOrderAction] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   // Take Action Modal State
   const [actionType, setActionType] = useState<'APPROVE' | 'REVIEW' | 'FLAG' | 'REJECT' | 'SEND_NOTIF'>('APPROVE');
@@ -246,12 +260,57 @@ export default function App() {
     }
   };
 
+  const fetchPaymentHistory = async () => {
+    setOrdersLoading(true);
+    try {
+      const res = await fetch(`/xxapi/admin/paymentHistory?type=${orderTypeFilter}&status=${orderStatusFilter}&search=${encodeURIComponent(ordersSearchTerm)}`);
+      const json = await res.json();
+      if (json.code === 0 && Array.isArray(json.data)) {
+        setOrders(json.data);
+      }
+    } catch (e) {
+      console.error('Failed to fetch payment history:', e);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  const handleOrderActionSubmit = async () => {
+    if (!selectedOrderForAction) return;
+    setSubmittingOrderAction(true);
+    try {
+      const res = await fetch('/xxapi/admin/update-order-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: selectedOrderForAction.orderId || selectedOrderForAction.rptNo,
+          action: orderActionType,
+          reason: orderActionRemark,
+          remark: orderActionRemark
+        })
+      });
+      const json = await res.json();
+      if (json.code === 0) {
+        setSelectedOrderForAction(null);
+        setOrderActionRemark('');
+        fetchPaymentHistory();
+      } else {
+        alert(json.msg || 'Failed to update order status');
+      }
+    } catch (e: any) {
+      alert('Error updating order: ' + e.message);
+    } finally {
+      setSubmittingOrderAction(false);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
     fetchLiveLogs();
     fetchAuditLogs();
     fetchLinkedTools();
-  }, [searchTerm]);
+    fetchPaymentHistory();
+  }, [searchTerm, orderTypeFilter, orderStatusFilter]);
 
   const handleExecuteAction = async () => {
     if (!selectedUserForAction) return;
@@ -557,6 +616,23 @@ export default function App() {
 
             <nav className="flex flex-col space-y-2">
               <button
+                onClick={() => { setActiveTab('orders-history'); fetchPaymentHistory(); }}
+                className={`w-full text-left px-3.5 py-3 rounded-xl text-xs font-bold transition flex items-center justify-between ${
+                  activeTab === 'orders-history'
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                    : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
+                }`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <Activity className="w-4 h-4 text-emerald-400" />
+                  Buy & Sell Orders & Take Action
+                </span>
+                <span className="text-[10px] bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-800">
+                  {orders.length}
+                </span>
+              </button>
+
+              <button
                 onClick={() => setActiveTab('guide-support')}
                 className={`w-full text-left px-3.5 py-3 rounded-xl text-xs font-bold transition flex items-center justify-between ${
                   activeTab === 'guide-support'
@@ -680,6 +756,337 @@ export default function App() {
               </div>
             </div>
           </div>
+
+        {/* TAB: BUY & SELL ORDERS HISTORY & TAKE ACTION */}
+        {activeTab === 'orders-history' && (
+          <div className="space-y-6">
+            {/* Header Metrics */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 flex items-center space-x-4 shadow-xl">
+                <div className="p-3 bg-blue-500/10 text-blue-400 rounded-xl border border-blue-500/20">
+                  <Activity className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 font-semibold uppercase">Total Orders</p>
+                  <p className="text-xl font-bold text-white mt-0.5">{orders.length}</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 flex items-center space-x-4 shadow-xl">
+                <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20">
+                  <CheckCircle className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 font-semibold uppercase">Successful</p>
+                  <p className="text-xl font-bold text-emerald-400 mt-0.5">
+                    {orders.filter(o => o.payer_status === 3 || o.paymentSuccessStatus).length}
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 flex items-center space-x-4 shadow-xl">
+                <div className="p-3 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20">
+                  <Clock className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 font-semibold uppercase">Pending / In Review</p>
+                  <p className="text-xl font-bold text-amber-400 mt-0.5">
+                    {orders.filter(o => o.payer_status === 1 || o.payer_status === 2).length}
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 flex items-center space-x-4 shadow-xl">
+                <div className="p-3 bg-rose-500/10 text-rose-400 rounded-xl border border-rose-500/20">
+                  <XCircle className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 font-semibold uppercase">Cancelled / Expired</p>
+                  <p className="text-xl font-bold text-rose-400 mt-0.5">
+                    {orders.filter(o => o.payer_status === 4 || o.payer_status === 5 || o.isExpired).length}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Filter and Search Controls */}
+            <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 space-y-4 shadow-xl">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                  {/* Order Type Filter */}
+                  <div className="flex items-center bg-slate-900 rounded-xl p-1 border border-slate-800 text-xs">
+                    <button
+                      onClick={() => setOrderTypeFilter('all')}
+                      className={`px-3 py-1.5 rounded-lg font-semibold transition ${orderTypeFilter === 'all' ? 'bg-purple-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                    >
+                      All Types
+                    </button>
+                    <button
+                      onClick={() => setOrderTypeFilter('buy')}
+                      className={`px-3 py-1.5 rounded-lg font-semibold transition ${orderTypeFilter === 'buy' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                    >
+                      Buy Orders
+                    </button>
+                    <button
+                      onClick={() => setOrderTypeFilter('sell')}
+                      className={`px-3 py-1.5 rounded-lg font-semibold transition ${orderTypeFilter === 'sell' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                    >
+                      Sell Orders
+                    </button>
+                  </div>
+
+                  {/* Order Status Filter */}
+                  <div className="flex items-center bg-slate-900 rounded-xl p-1 border border-slate-800 text-xs">
+                    <button
+                      onClick={() => setOrderStatusFilter('all')}
+                      className={`px-3 py-1.5 rounded-lg font-semibold transition ${orderStatusFilter === 'all' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                    >
+                      All Status
+                    </button>
+                    <button
+                      onClick={() => setOrderStatusFilter('pending')}
+                      className={`px-3 py-1.5 rounded-lg font-semibold transition ${orderStatusFilter === 'pending' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                    >
+                      Pending
+                    </button>
+                    <button
+                      onClick={() => setOrderStatusFilter('success')}
+                      className={`px-3 py-1.5 rounded-lg font-semibold transition ${orderStatusFilter === 'success' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                    >
+                      Successful
+                    </button>
+                    <button
+                      onClick={() => setOrderStatusFilter('cancelled')}
+                      className={`px-3 py-1.5 rounded-lg font-semibold transition ${orderStatusFilter === 'cancelled' ? 'bg-rose-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                    >
+                      Cancelled / Expired
+                    </button>
+                  </div>
+                </div>
+
+                {/* Search Input */}
+                <div className="flex items-center gap-2 w-full md:w-80">
+                  <div className="relative w-full">
+                    <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Search Order ID, Phone, UTR..."
+                      value={ordersSearchTerm}
+                      onChange={(e) => setOrdersSearchTerm(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') fetchPaymentHistory(); }}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+                  <button
+                    onClick={fetchPaymentHistory}
+                    className="p-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl transition"
+                    title="Search Orders"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${ordersLoading ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Orders History Table */}
+            <div className="bg-slate-950/80 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-800 bg-slate-900/50 text-slate-400 font-semibold uppercase tracking-wider">
+                      <th className="py-3.5 px-4">Order ID & Date</th>
+                      <th className="py-3.5 px-4">Type</th>
+                      <th className="py-3.5 px-4">User Details</th>
+                      <th className="py-3.5 px-4">Amount</th>
+                      <th className="py-3.5 px-4">Payment Method / Payee</th>
+                      <th className="py-3.5 px-4">UTR Ref</th>
+                      <th className="py-3.5 px-4">Proof</th>
+                      <th className="py-3.5 px-4">Status</th>
+                      <th className="py-3.5 px-4 min-w-[200px]">Cancellation / Rejection Remark</th>
+                      <th className="py-3.5 px-4 text-right">Take Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {ordersLoading ? (
+                      <tr>
+                        <td colSpan={10} className="py-8 text-center text-slate-400">
+                          <RefreshCw className="w-6 h-6 animate-spin mx-auto text-purple-400 mb-2" />
+                          Fetching Buy & Sell order history...
+                        </td>
+                      </tr>
+                    ) : orders.length === 0 ? (
+                      <tr>
+                        <td colSpan={10} className="py-8 text-center text-slate-500">
+                          No Buy/Sell orders found.
+                        </td>
+                      </tr>
+                    ) : (
+                      orders.map((ord: any) => {
+                        const isBuy = ord.type === 'buy' || ord.type === 'recharge';
+                        const isSuccess = ord.payer_status === 3 || ord.paymentSuccessStatus;
+                        const isCancelled = ord.payer_status === 4 || ord.payer_status === 5;
+                        const isExpired = ord.isExpired || (ord.cancelRemark && ord.cancelRemark.toLowerCase().includes('expire'));
+
+                        return (
+                          <tr key={ord._id || ord.orderId} className="hover:bg-slate-900/40 transition-colors">
+                            {/* Order ID & Date */}
+                            <td className="py-3.5 px-4 font-mono">
+                              <span className="font-bold text-white block">{ord.orderId || ord.rptNo}</span>
+                              <span className="text-[10px] text-slate-400">
+                                {ord.ctime ? new Date(ord.ctime * 1000).toLocaleString('en-IN') : 'N/A'}
+                              </span>
+                            </td>
+
+                            {/* Type */}
+                            <td className="py-3.5 px-4">
+                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase ${
+                                isBuy
+                                  ? 'bg-emerald-950 text-emerald-300 border-emerald-800'
+                                  : 'bg-blue-950 text-blue-300 border-blue-800'
+                              }`}>
+                                {isBuy ? 'BUY' : 'SELL'}
+                              </span>
+                            </td>
+
+                            {/* User Details */}
+                            <td className="py-3.5 px-4">
+                              <div className="font-semibold text-white">{ord.buyerPhone || 'N/A'}</div>
+                              <div className="text-[10px] text-slate-400">{ord.buyerRealName || 'Monexo User'}</div>
+                            </td>
+
+                            {/* Amount */}
+                            <td className="py-3.5 px-4 font-bold text-emerald-400 text-sm">
+                              ₹{Number(ord.amount || 0).toLocaleString('en-IN')}
+                            </td>
+
+                            {/* Payment Method / Payee */}
+                            <td className="py-3.5 px-4">
+                              <div className="text-white font-medium">{ord.paymentMethod || 'UPI Payment'}</div>
+                              <div className="text-[10px] text-slate-400 font-mono truncate max-w-[140px]" title={ord.payeeAccount}>
+                                {ord.payeeAccount || 'N/A'}
+                              </div>
+                            </td>
+
+                            {/* UTR */}
+                            <td className="py-3.5 px-4 font-mono text-slate-300">
+                              {ord.utr ? (
+                                <span className="bg-slate-900 px-2 py-1 rounded border border-slate-800 font-semibold text-purple-300">
+                                  {ord.utr}
+                                </span>
+                              ) : (
+                                <span className="text-slate-500 italic">No UTR</span>
+                              )}
+                            </td>
+
+                            {/* Proof Image */}
+                            <td className="py-3.5 px-4">
+                              {ord.payment_slip || ord.paymentProofUrl ? (
+                                <button
+                                  onClick={() => setPreviewImage(ord.payment_slip || ord.paymentProofUrl)}
+                                  className="group relative block w-10 h-10 rounded-lg overflow-hidden border border-slate-700 hover:border-purple-500 transition shadow"
+                                >
+                                  <img
+                                    src={ord.payment_slip || ord.paymentProofUrl}
+                                    alt="Slip"
+                                    className="w-full h-full object-cover"
+                                  />
+                                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                                    <Eye className="w-4 h-4 text-white" />
+                                  </div>
+                                </button>
+                              ) : (
+                                <span className="text-[10px] text-slate-500 italic">No Slip</span>
+                              )}
+                            </td>
+
+                            {/* Status */}
+                            <td className="py-3.5 px-4">
+                              {isSuccess ? (
+                                <span className="bg-emerald-950 text-emerald-300 border border-emerald-800 px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 w-fit shadow">
+                                  <CheckCircle className="w-3 h-3 text-emerald-400" /> Successfully
+                                </span>
+                              ) : isExpired ? (
+                                <span className="bg-amber-950 text-amber-300 border border-amber-800 px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 w-fit shadow">
+                                  <Clock className="w-3 h-3 text-amber-400" /> Expired
+                                </span>
+                              ) : isCancelled ? (
+                                <span className="bg-rose-950 text-rose-300 border border-rose-800 px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 w-fit shadow">
+                                  <XCircle className="w-3 h-3 text-rose-400" /> Cancelled
+                                </span>
+                              ) : (
+                                <span className="bg-yellow-950 text-yellow-300 border border-yellow-800 px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 w-fit shadow">
+                                  <RefreshCw className="w-3 h-3 text-yellow-400 animate-spin" /> In Review
+                                </span>
+                              )}
+                            </td>
+
+                            {/* REMARK / CANCELLATION REASON */}
+                            <td className="py-3.5 px-4">
+                              {ord.cancelRemark || ord.reason_for_rejection ? (
+                                <div className="p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-rose-300 text-[11px] font-medium leading-relaxed max-w-[220px]">
+                                  {ord.cancelRemark || ord.reason_for_rejection}
+                                </div>
+                              ) : isSuccess ? (
+                                <span className="text-[11px] text-emerald-400/80 font-medium italic">Approved & Credited</span>
+                              ) : (
+                                <span className="text-[11px] text-slate-500 italic">No remark added</span>
+                              )}
+                            </td>
+
+                            {/* Take Action Column */}
+                            <td className="py-3.5 px-4 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                {!isSuccess && (
+                                  <button
+                                    onClick={() => {
+                                      setSelectedOrderForAction(ord);
+                                      setOrderActionType('APPROVE');
+                                      setOrderActionRemark('');
+                                    }}
+                                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2.5 py-1.5 rounded-lg text-[10px] transition shadow"
+                                    title="Approve Order"
+                                  >
+                                    Approve
+                                  </button>
+                                )}
+                                {!isCancelled && (
+                                  <button
+                                    onClick={() => {
+                                      setSelectedOrderForAction(ord);
+                                      setOrderActionType('REJECT');
+                                      setOrderActionRemark('Admin Rejected: Invalid UTR / Payment proof verification failed');
+                                    }}
+                                    className="bg-rose-600 hover:bg-rose-500 text-white font-bold px-2.5 py-1.5 rounded-lg text-[10px] transition shadow"
+                                    title="Reject / Cancel Order with Remark"
+                                  >
+                                    Reject / Remark
+                                  </button>
+                                )}
+                                {!isExpired && !isSuccess && (
+                                  <button
+                                    onClick={() => {
+                                      setSelectedOrderForAction(ord);
+                                      setOrderActionType('EXPIRE');
+                                      setOrderActionRemark('Order Expired (15-min timeout elapsed)');
+                                    }}
+                                    className="bg-amber-600 hover:bg-amber-500 text-white font-bold px-2.5 py-1.5 rounded-lg text-[10px] transition shadow"
+                                    title="Mark Expired"
+                                  >
+                                    Expire
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* TAB 0: GUIDE & LIVE SUPPORT SESSIONS */}
         {activeTab === 'guide-support' && <GuideSupportTab />}
@@ -1484,6 +1891,185 @@ export default function App() {
                   Close
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ORDER TAKE ACTION MODAL (APPROVE / REJECT / EXPIRE WITH CUSTOM REMARK) */}
+      {selectedOrderForAction && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-purple-400" /> Order Take Action & Remark
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5 font-mono">
+                  Order ID: <span className="text-purple-300 font-bold">{selectedOrderForAction.orderId || selectedOrderForAction.rptNo}</span>
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedOrderForAction(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">User Phone:</span>
+                  <span className="text-white font-bold">{selectedOrderForAction.buyerPhone || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Amount:</span>
+                  <span className="text-emerald-400 font-bold">₹{Number(selectedOrderForAction.amount || 0).toLocaleString('en-IN')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">UTR:</span>
+                  <span className="text-purple-300 font-mono">{selectedOrderForAction.utr || 'N/A'}</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-bold mb-1.5">Action to Execute</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOrderActionType('APPROVE');
+                      setOrderActionRemark('');
+                    }}
+                    className={`p-2.5 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1 ${
+                      orderActionType === 'APPROVE'
+                        ? 'bg-emerald-950 border-emerald-500 text-emerald-300 shadow'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <CheckCircle className="w-4 h-4" /> Approve
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOrderActionType('REJECT');
+                      if (!orderActionRemark) setOrderActionRemark('Admin Rejected: Invalid UTR / Payment proof verification failed');
+                    }}
+                    className={`p-2.5 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1 ${
+                      orderActionType === 'REJECT'
+                        ? 'bg-rose-950 border-rose-500 text-rose-300 shadow'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <XCircle className="w-4 h-4" /> Reject / Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOrderActionType('EXPIRE');
+                      setOrderActionRemark('Order Expired (15-min timeout elapsed)');
+                    }}
+                    className={`p-2.5 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1 ${
+                      orderActionType === 'EXPIRE'
+                        ? 'bg-amber-950 border-amber-500 text-amber-300 shadow'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Clock className="w-4 h-4" /> Expire Order
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-bold mb-1.5">
+                  Cancellation / Rejection Reason Remark
+                </label>
+                <textarea
+                  rows={3}
+                  value={orderActionRemark}
+                  onChange={(e) => setOrderActionRemark(e.target.value)}
+                  placeholder="Enter clear rejection reason or remark..."
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-purple-500 placeholder-slate-500"
+                />
+                
+                {/* Quick Presets */}
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setOrderActionRemark('Order Expired (15-min timeout elapsed)')}
+                    className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded-lg transition"
+                  >
+                    15-min Timeout Expired
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOrderActionRemark('Admin Rejected: Invalid UTR / Reference number provided')}
+                    className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded-lg transition"
+                  >
+                    Invalid UTR
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOrderActionRemark('Admin Rejected: Payment proof missing or unreadable')}
+                    className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded-lg transition"
+                  >
+                    Invalid Payment Slip
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOrderActionRemark('Order Cancelled by user request')}
+                    className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded-lg transition"
+                  >
+                    User Cancelled
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-3 flex justify-end space-x-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setSelectedOrderForAction(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOrderActionSubmit}
+                  disabled={submittingOrderAction}
+                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold shadow-lg shadow-purple-600/30 transition flex items-center gap-2"
+                >
+                  {submittingOrderAction && <RefreshCw className="w-4 h-4 animate-spin" />}
+                  Submit Action
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PAYMENT SLIP IMAGE ZOOM MODAL */}
+      {previewImage && (
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="relative max-w-3xl w-full max-h-[90vh] bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 flex flex-col shadow-2xl">
+            <div className="p-3 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+              <span className="text-xs font-bold text-white flex items-center gap-2">
+                <Eye className="w-4 h-4 text-purple-400" /> Payment Proof / Slip Preview
+              </span>
+              <button
+                onClick={() => setPreviewImage(null)}
+                className="p-1 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 flex-1 overflow-auto flex items-center justify-center bg-black/50">
+              <img
+                src={previewImage}
+                alt="Payment Proof Zoom"
+                className="max-w-full max-h-[75vh] object-contain rounded-xl border border-slate-800 shadow-2xl"
+              />
             </div>
           </div>
         </div>
