@@ -3709,34 +3709,13 @@ async function getInviteNewbieData(req) {
       dayStepParamsForInviteDayStep[friendPhone] = "200,0,0,0,0";
     }
   }
-  async function getUserTotalInviteReceivedBonus2(user2, cleanClaimedPhonesCount = 0) {
+  async function getUserTotalInviteReceivedBonus(user2, cleanClaimedPhonesCount = 0) {
     if (!user2) return 0;
-    const userIds = [user2._id, user2._id ? user2._id.toString() : ""].filter(Boolean);
-    const userPhones = [user2.phone, user2.mobileNo].filter(Boolean);
-    let totalFromTx = 0;
-    try {
-      const rewardTxs = await Transaction.find({
-        $or: [
-          { userId: { $in: userIds } },
-          { phone: { $in: userPhones } }
-        ],
-        payer_status: 3,
-        $or: [
-          { type: "reward" },
-          { reason_for_rejection: { $regex: /Invite|Newbie|Day Step|Friends|Bonus|Step Reward/i } },
-          { description: { $regex: /Invite|Newbie|Day Step|Friends|Bonus|Step Reward/i } }
-        ]
-      }).lean().select("amount reward");
-      totalFromTx = rewardTxs.reduce((sum, t) => sum + (Number(t.amount) || Number(t.reward) || 0), 0);
-    } catch (e) {
-    }
-    const field1 = Number(user2.inviteFriendsClaimedAmt || 0);
-    const field2 = Number(user2.claimedInviteNewbieCount || 0) * 200;
-    const field3 = cleanClaimedPhonesCount * 200;
-    return Math.max(totalFromTx, field1 + field2, field1 + field3, field1, field2, field3);
+    const count = Number(cleanClaimedPhonesCount || user2.claimedInviteNewbieCount || 0);
+    return count * 200;
   }
   const claimedCount = cleanClaimedPhonesSet.size;
-  const claimedAmt = await getUserTotalInviteReceivedBonus2(user, claimedCount);
+  const claimedAmt = await getUserTotalInviteReceivedBonus(user, claimedCount);
   const resultData = {
     user,
     directMembers: allTeamMembers,
@@ -5681,24 +5660,24 @@ app.get("/xxapi/inviteFriends/init", async (req, res) => {
         paramsObj[friendKey] = "0";
       }
     }
-    const ruleObj = { "1": 10, "3": 30, "5": 50, "10": 100 };
+    const ruleObj = { "1": 200, "3": 600, "5": 1e3, "8": 1600, "10": 2e3 };
     const ruleStr = JSON.stringify(ruleObj);
-    const totalRewardPool = 190;
-    const rawClaimedPhones = Array.isArray(user.claimedInviteFriendPhones) ? user.claimedInviteFriendPhones : [];
-    const claimedAmt = await getUserTotalInviteReceivedBonus(user, rawClaimedPhones.length);
+    const totalFriendsCount = directMembers.length;
+    const totalRewardPool = totalFriendsCount * 200;
+    const receivedBonusAmt = completedNewbieCount * 200;
     return res.json({
       code: 0,
       msg: "success",
       data: {
         inviteFriendsReward: {
           rule: ruleStr,
-          fixed: 10
+          fixed: 200
         },
         activityRecord: {
           rewardAmt: totalRewardPool,
           params: JSON.stringify(paramsObj),
           condition: completedNewbieCount,
-          settleAmt: claimedAmt,
+          settleAmt: receivedBonusAmt,
           countDown: 0
         }
       }

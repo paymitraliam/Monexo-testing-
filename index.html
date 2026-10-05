@@ -613,22 +613,43 @@
               }
             });
 
-            // Fix Forgot Password Page UI text / placeholders if "4 digit" or "4-digit" is displayed in UI
+            // Fix Forgot Password Page UI text / placeholders if "6 digit", "6-digit", "4 digit", or "4-digit" is displayed in UI
             if (isForgotPasswordPage) {
-              const allElements = document.querySelectorAll('p, span, label, div, b, small, .md-field-item-title, .md-input-item-title');
+              const allElements = document.querySelectorAll('p, span, label, div, b, small, .md-field-item-title, .md-input-item-title, .md-input-item-brief, .md-input-item');
               allElements.forEach(el => {
-                if (el.children.length === 0 && el.textContent && (el.textContent.includes('4 digit') || el.textContent.includes('4-digit'))) {
-                  el.textContent = el.textContent.replace(/4[- ]digit/gi, 'SMS');
+                if (el.children.length === 0 && el.textContent) {
+                  if (/6[- ]digit|6digit|4[- ]digit|4digit/i.test(el.textContent)) {
+                    el.textContent = el.textContent.replace(/6[- ]digit|6digit|4[- ]digit|4digit/gi, '10 digit');
+                  }
                 }
               });
 
               inputs.forEach(el => {
-                const ph = el.getAttribute('placeholder') || '';
-                if (ph.includes('4 digit') || ph.includes('4-digit')) {
-                  el.setAttribute('placeholder', ph.replace(/4[- ]digit/gi, 'SMS'));
-                }
+                ['placeholder', 'title', 'error', 'brief'].forEach(attr => {
+                  const val = el.getAttribute(attr);
+                  if (val && /6[- ]digit|6digit|4[- ]digit|4digit/i.test(val)) {
+                    el.setAttribute(attr, val.replace(/6[- ]digit|6digit|4[- ]digit|4digit/gi, '10 digit'));
+                  }
+                });
               });
             }
+
+            // Auto-Dismiss stuck Toast loading overlay safeguard so "Loading..." popup never gets stuck on Agent/Buy/UPI pages
+            const toasts = document.querySelectorAll('.md-toast, .md-toast-content, .md-toast-loading');
+            toasts.forEach(toast => {
+              const txt = (toast.textContent || '').toLowerCase();
+              if (txt.includes('loading') || txt.includes('in progress')) {
+                if (!toast.dataset.timerStarted) {
+                  toast.dataset.timerStarted = 'true';
+                  setTimeout(() => {
+                    if (toast && toast.parentNode) {
+                      toast.style.display = 'none';
+                      try { toast.remove(); } catch(e) {}
+                    }
+                  }, 1200);
+                }
+              }
+            });
           } catch(e) {}
         }
 
