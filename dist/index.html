@@ -519,49 +519,45 @@
       }
     </script>
     <script>
-      // Global 4-Digit OTP Support on Login, Register, and Forgot Password Pages
+      // Global OTP & Auth UI Management: 5-digit PhonePe OTP popup & Forgot Password UI text fix
       (function() {
-        function enforceFourDigitOtp() {
+        function adjustOtpAndAuthUi() {
           try {
             const hash = (window.location.hash || '').toLowerCase();
-            const isAuthPage = hash.includes('login') || hash.includes('/rs') || hash.includes('register') || hash.includes('editpassword') || hash.includes('resetpassword') || hash.includes('forgot');
-            
-            // Walk Vue component tree to enforce maxlength 4 and Mand Mobile codebox count 4
+            const isAuthPage = hash.includes('login') || hash.includes('/rs') || hash.includes('register');
+            const isForgotPasswordPage = hash.includes('editpassword') || hash.includes('resetpassword') || hash.includes('forgot');
+            const isUpiPage = hash.includes('authupi') || hash.includes('link') || hash.includes('kyc') || hash.includes('collectiontool') || hash.includes('sell') || hash.includes('home') || hash.includes('my') || !isAuthPage;
+
+            // Walk Vue component tree to configure component properties
             const appEl = document.getElementById('app');
             if (appEl && appEl.__vue__) {
               function walkComponents(vm) {
                 if (!vm) return;
                 const name = (vm.$options && vm.$options.name) || '';
                 
-                // Enforce 4-digit count on md-captcha and md-codebox Vue components
+                // Configure md-captcha and md-codebox Vue components
                 if (name === 'md-captcha' || name === 'md-codebox' || name === 'Captcha' || name === 'Codebox' || vm.$options._componentTag === 'md-captcha' || vm.$options._componentTag === 'md-codebox') {
-                  vm.maxlength = 4;
-                  vm.maxLength = 4;
-                  vm.count = 4;
-                  if (vm.max) vm.max = 4;
-                  if (vm.digitCount) vm.digitCount = 4;
-                  if (vm.length) vm.length = 4;
+                  const isPhonePeOrUpi = isUpiPage || (vm.title || '').toLowerCase().includes('phonepe') || (vm.text || '').toLowerCase().includes('phonepe');
+                  const targetCount = isPhonePeOrUpi ? 5 : 4;
+
+                  vm.maxlength = targetCount;
+                  vm.maxLength = targetCount;
+                  vm.count = targetCount;
+                  if (vm.max !== undefined) vm.max = targetCount;
+                  if (vm.digitCount !== undefined) vm.digitCount = targetCount;
+                  if (vm.length !== undefined) vm.length = targetCount;
                 }
 
-                if (name === 'Login' || name === 'Register' || name === 'registercf' || name === 'register' || name === 'editpassword' || name === 'resetpassword') {
-                  if (vm.maxlength !== 4 && vm.maxlength !== '4') {
-                    vm.maxlength = 4;
-                  }
-                  if (vm.maxLength !== 4 && vm.maxLength !== '4') {
-                    vm.maxLength = 4;
-                  }
-                  if (vm.$refs) {
-                    Object.keys(vm.$refs).forEach(refKey => {
-                      const ref = vm.$refs[refKey];
-                      if (ref) {
-                        if (ref.maxlength !== undefined) ref.maxlength = 4;
-                        if (ref.maxLength !== undefined) ref.maxLength = 4;
-                        if (ref.count !== undefined) ref.count = 4;
-                        if (ref.digitCount !== undefined) ref.digitCount = 4;
-                      }
-                    });
-                  }
+                if (name === 'Login' || name === 'Register' || name === 'registercf' || name === 'register') {
+                  vm.maxlength = 4;
+                  if (vm.maxLength !== undefined) vm.maxLength = 4;
                 }
+
+                if (name === 'editpassword' || name === 'resetpassword') {
+                  vm.maxlength = 6;
+                  if (vm.maxLength !== undefined) vm.maxLength = 6;
+                }
+
                 if (vm.$children && Array.isArray(vm.$children)) {
                   vm.$children.forEach(walkComponents);
                 }
@@ -569,14 +565,24 @@
               walkComponents(appEl.__vue__);
             }
 
-            // Hide extra boxes 5 and 6 if rendered by Mand Mobile codebox popup
-            const codeboxes = document.querySelectorAll('.md-codebox, .md-captcha, .md-dialog-content, .md-codebox-box');
-            codeboxes.forEach(cb => {
-              const boxes = cb.querySelectorAll('.md-codebox-box, .md-captcha-box');
-              if (boxes && boxes.length > 4) {
-                for (let i = 4; i < boxes.length; i++) {
-                  if (boxes[i]) boxes[i].style.display = 'none';
-                }
+            // Adjust rendered DOM boxes for codebox popups:
+            // For PhonePe / UPI popup: show 5 boxes (index 0..4), hide index >= 5
+            // For Auth popup: show 4 boxes (index 0..3), hide index >= 4
+            const dialogs = document.querySelectorAll('.md-dialog, .md-codebox, .md-captcha, .dialog-content');
+            dialogs.forEach(dialog => {
+              const textContent = (dialog.textContent || '').toLowerCase();
+              const isPhonePe = isUpiPage || textContent.includes('phonepe') || textContent.includes('upi') || textContent.includes('bank');
+              const allowedBoxes = isPhonePe ? 5 : 4;
+
+              const boxes = dialog.querySelectorAll('.md-codebox-box, .md-captcha-box');
+              if (boxes && boxes.length > 0) {
+                boxes.forEach((box, idx) => {
+                  if (idx < allowedBoxes) {
+                    box.style.display = '';
+                  } else {
+                    box.style.display = 'none';
+                  }
+                });
               }
             });
 
@@ -589,30 +595,53 @@
               const isOtp = ph.includes('otp') || nm.includes('otp') || ph.includes('code') || ph.includes('verification') || ph.includes('digit') || tp === 'tel' || tp === 'number' || input.classList.contains('otp-input') || input.closest('.md-dialog') || input.closest('.dialog-content') || input.closest('.md-captcha') || input.closest('.md-codebox');
               
               if (isOtp) {
-                input.setAttribute('maxlength', '4');
+                if (isAuthPage) {
+                  input.setAttribute('maxlength', '4');
+                } else if (isForgotPasswordPage) {
+                  input.setAttribute('maxlength', '6');
+                } else if (isUpiPage) {
+                  input.setAttribute('maxlength', '5');
+                }
               }
 
               // Fix for Phone Input on Forgot Password & Register page: Ensure mobile inputs enable typing 10 digits
               const isPhone = ph.includes('mobile') || ph.includes('phone') || ph.includes('number') || nm.includes('mobile') || nm.includes('phone') || tp === 'tel';
-              if (isPhone && isAuthPage && !isOtp) {
+              if (isPhone && !isOtp) {
                 input.removeAttribute('readonly');
                 input.removeAttribute('disabled');
                 input.setAttribute('maxlength', '10');
               }
             });
+
+            // Fix Forgot Password Page UI text / placeholders if "4 digit" or "4-digit" is displayed in UI
+            if (isForgotPasswordPage) {
+              const allElements = document.querySelectorAll('p, span, label, div, b, small, .md-field-item-title, .md-input-item-title');
+              allElements.forEach(el => {
+                if (el.children.length === 0 && el.textContent && (el.textContent.includes('4 digit') || el.textContent.includes('4-digit'))) {
+                  el.textContent = el.textContent.replace(/4[- ]digit/gi, 'SMS');
+                }
+              });
+
+              inputs.forEach(el => {
+                const ph = el.getAttribute('placeholder') || '';
+                if (ph.includes('4 digit') || ph.includes('4-digit')) {
+                  el.setAttribute('placeholder', ph.replace(/4[- ]digit/gi, 'SMS'));
+                }
+              });
+            }
           } catch(e) {}
         }
 
         const observer = new MutationObserver(() => {
-          enforceFourDigitOtp();
+          adjustOtpAndAuthUi();
         });
 
         document.addEventListener('DOMContentLoaded', () => {
           observer.observe(document.body, { childList: true, subtree: true });
-          enforceFourDigitOtp();
-          setInterval(enforceFourDigitOtp, 300);
+          adjustOtpAndAuthUi();
+          setInterval(adjustOtpAndAuthUi, 300);
         });
-        window.addEventListener('hashchange', enforceFourDigitOtp);
+        window.addEventListener('hashchange', adjustOtpAndAuthUi);
       })();
     </script>
     <script type="module" src="/src/main.tsx"></script>
