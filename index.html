@@ -553,9 +553,10 @@
                   if (vm.maxLength !== undefined) vm.maxLength = 4;
                 }
 
-                if (name === 'editpassword' || name === 'resetpassword') {
-                  vm.maxlength = 6;
-                  if (vm.maxLength !== undefined) vm.maxLength = 6;
+                if (name === 'editpassword' || name === 'resetpassword' || name === 'inputValidate') {
+                  vm.maxlength = 11;
+                  if (vm.maxLength !== undefined) vm.maxLength = 11;
+                  if (vm.type === 'phone') vm.type = 'tel';
                 }
 
                 if (vm.$children && Array.isArray(vm.$children)) {
@@ -609,7 +610,7 @@
               if (isPhone && !isOtp) {
                 input.removeAttribute('readonly');
                 input.removeAttribute('disabled');
-                input.setAttribute('maxlength', '10');
+                input.setAttribute('maxlength', '11');
               }
             });
 
