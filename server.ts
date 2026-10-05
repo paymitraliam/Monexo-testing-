@@ -7773,16 +7773,18 @@ function getOrCreateUserTool(user: any, toolId: any) {
     if (!isNaN(num) && num !== 0) typeVal = num;
   }
 
+  const targetAccount = String(req.body?.account || req.body?.phone || req.query?.account || '').trim();
+
   tool = user.collectionTools.find((t: any) => {
     const tType = Number(t.ctType || t.type || t.ct_type);
-    return tType === typeVal || (typeVal === 8 && tType === 9) || (typeVal === 2 && tType === 3);
+    const sameType = tType === typeVal || (typeVal === 8 && tType === 9) || (typeVal === 2 && tType === 3);
+    const sameAccount = !targetAccount || !t.account || String(t.account).trim() === targetAccount;
+    return sameType && sameAccount;
   });
 
   if (!tool) {
     const newToolId = String(toolId || `tool-${typeVal}-${Date.now()}`);
     const defaultName = mapCtTypeToName(typeVal);
-    const existingUpi = (user.upiDetails && user.upiDetails.upi) ? user.upiDetails.upi : "";
-    const hasUpi = existingUpi && existingUpi.includes('@') && existingUpi !== 'Pending verification';
     
     tool = {
       id: newToolId,
@@ -7793,10 +7795,11 @@ function getOrCreateUserTool(user: any, toolId: any) {
       pnname: defaultName,
       text: defaultName,
       name: defaultName,
-      account: user.phone || "",
-      upi: hasUpi ? existingUpi : "Pending verification",
-      state: hasUpi ? 2 : 5,
-      status: hasUpi ? 1 : 0,
+      account: targetAccount || user.phone || "",
+      upi: "Pending verification",
+      backup_upi: [],
+      state: 7, // 7 = waiting_authupi (Requires OTP verification for new phone number)
+      status: 0,
       inSell: 0
     };
     user.collectionTools.push(tool);
@@ -9284,10 +9287,7 @@ app.post('/xxapi/monitorflow/check', async (req, res) => {
       tool = user.collectionTools.find(t => t.id === ct_id);
     }
     if (!tool && account) {
-      tool = user.collectionTools.find(t => t.account === account && (t.type === typeNum || t.ctType === typeNum || t.ct_type === typeNum));
-    }
-    if (!tool) {
-      tool = user.collectionTools.find(t => (t.type === typeNum || t.ctType === typeNum || t.ct_type === typeNum));
+      tool = user.collectionTools.find(t => String(t.account).trim() === String(account).trim() && (t.type === typeNum || t.ctType === typeNum || t.ct_type === typeNum));
     }
   }
 

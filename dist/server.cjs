@@ -77,13 +77,13 @@ function getHtmlFilePath(filename) {
   return import_path.default.join(currentDirname, filename);
 }
 var app = (0, import_express.default)();
-app.get(["/health", "/api/health", "/favicon.ico", "/robots.txt"], (req, res) => {
-  if (req.path === "/favicon.ico") {
+app.get(["/health", "/api/health", "/favicon.ico", "/robots.txt"], (req2, res) => {
+  if (req2.path === "/favicon.ico") {
     const iconPath = import_path.default.join(process.cwd(), "favicon.ico");
     if (import_fs.default.existsSync(iconPath)) return res.sendFile(iconPath);
     return res.status(204).end();
   }
-  if (req.path === "/robots.txt") {
+  if (req2.path === "/robots.txt") {
     const robotsPath = import_path.default.join(process.cwd(), "robots.txt");
     if (import_fs.default.existsSync(robotsPath)) return res.sendFile(robotsPath);
     return res.type("text/plain").send("User-agent: *\nAllow: /");
@@ -97,66 +97,66 @@ app.get([
   "/static/privacypolicy.html",
   "/static/icon/privacypolicy.html",
   "/public/privacypolicy.html"
-], (req, res) => {
+], (req2, res) => {
   const filePath = import_path.default.join(process.cwd(), "static", "privacypolicy.html");
   if (import_fs.default.existsSync(filePath)) {
     return res.sendFile(filePath);
   }
   return res.status(404).send("Privacy Policy not found");
 });
-var handleSliderCaptcha = async (req, res) => {
+var handleSliderCaptcha = async (req2, res) => {
   console.log("[GET /xxsapi/slid] Captcha request received - returning disabled success");
   return res.status(200).json({ code: 0, msg: "success", data: { disabled: true } });
 };
 app.get("/xxsapi/slid", handleSliderCaptcha);
 app.get("/xxapi/sliderCaptcha", handleSliderCaptcha);
-app.use((req, res, next) => {
-  if (req.url.includes("slid") || req.url.includes("Captcha")) {
-    console.log("[DEBUG REQ]", req.method, req.url, req.originalUrl, req.headers["x-forwarded-uri"]);
+app.use((req2, res, next) => {
+  if (req2.url.includes("slid") || req2.url.includes("Captcha")) {
+    console.log("[DEBUG REQ]", req2.method, req2.url, req2.originalUrl, req2.headers["x-forwarded-uri"]);
   }
   next();
 });
 var PORT = 3e3;
-app.use((req, res, next) => {
-  const forwardedUri = req.headers["x-forwarded-uri"] || req.headers["x-envoy-original-path"];
-  if (forwardedUri && typeof forwardedUri === "string" && forwardedUri.startsWith("/") && !req.url.startsWith("/xxapi") && !req.url.startsWith("/api")) {
-    req.url = forwardedUri;
+app.use((req2, res, next) => {
+  const forwardedUri = req2.headers["x-forwarded-uri"] || req2.headers["x-envoy-original-path"];
+  if (forwardedUri && typeof forwardedUri === "string" && forwardedUri.startsWith("/") && !req2.url.startsWith("/xxapi") && !req2.url.startsWith("/api")) {
+    req2.url = forwardedUri;
   }
   next();
 });
-app.use((req, res, next) => {
+app.use((req2, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-XSS-Protection", "1; mode=block");
   res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   next();
 });
-app.use((req, res, next) => {
-  if (req.body && typeof req.body === "object" && Object.keys(req.body).length > 0) {
+app.use((req2, res, next) => {
+  if (req2.body && typeof req2.body === "object" && Object.keys(req2.body).length > 0) {
     return next();
   }
-  import_express.default.json({ limit: "10mb" })(req, res, (err) => {
+  import_express.default.json({ limit: "10mb" })(req2, res, (err) => {
     if (err) {
       console.error("[Body Parser Error]", err.message || err);
-      req.body = {};
+      req2.body = {};
       return next();
     }
-    import_express.default.urlencoded({ limit: "10mb", extended: true })(req, res, (err2) => {
+    import_express.default.urlencoded({ limit: "10mb", extended: true })(req2, res, (err2) => {
       if (err2) {
         console.error("[Urlencoded Parser Error]", err2.message || err2);
       }
-      if (!req.body) req.body = {};
+      if (!req2.body) req2.body = {};
       next();
     });
   });
 });
-app.use((req, res, next) => {
+app.use((req2, res, next) => {
   next();
 });
 var upload = (0, import_multer.default)();
-app.use((req, res, next) => {
-  if (req.headers["content-type"] && req.headers["content-type"].includes("multipart/form-data")) {
-    upload.any()(req, res, (err) => {
+app.use((req2, res, next) => {
+  if (req2.headers["content-type"] && req2.headers["content-type"].includes("multipart/form-data")) {
+    upload.any()(req2, res, (err) => {
       if (err) {
         console.error("[Multer Error Handler]", err.message);
         return res.json({ code: 400, msg: err.message });
@@ -350,8 +350,8 @@ async function cleanupCorruptedPaymentNodes() {
   } catch (e) {
   }
 }
-app.use(async (req, res, next) => {
-  const reqPath = req.path || req.url || "";
+app.use(async (req2, res, next) => {
+  const reqPath = req2.path || req2.url || "";
   const nonDbEndpoints = ["/xxapi/client_error", "/api/health"];
   if (nonDbEndpoints.some((ep) => reqPath.startsWith(ep))) {
     return next();
@@ -1388,10 +1388,10 @@ function isPasswordEmpty(password) {
   const p = String(password).trim();
   return p === "" || p === "undefined" || p === "null" || p === "[object Object]";
 }
-function extractPasswordFromReq(req) {
-  if (!req) return "";
-  const body = req.body || {};
-  const query = req.query || {};
+function extractPasswordFromReq(req2) {
+  if (!req2) return "";
+  const body = req2.body || {};
+  const query = req2.query || {};
   const data = body.data || {};
   const params = body.params || {};
   const val = body.password ?? body.pwd ?? body.pass ?? body.userPassword ?? body.loginPassword ?? body.userPwd ?? data.password ?? data.pwd ?? data.pass ?? data.loginPassword ?? params.password ?? params.pwd ?? params.pass ?? query.password ?? query.pwd ?? query.pass ?? "";
@@ -1401,14 +1401,14 @@ function extractPasswordFromReq(req) {
 function getDefaultCollectionTools() {
   return [];
 }
-app.use((req, res, next) => {
-  const originalUrl = req.url;
-  if (req.url.startsWith("/.netlify/functions/xxapi")) {
-    req.url = req.url.replace("/.netlify/functions/xxapi", "/xxapi");
-  } else if (req.url.startsWith("/api/xxapi")) {
-    req.url = req.url.replace("/api/xxapi", "/xxapi");
-  } else if (req.url.startsWith("/api")) {
-    req.url = req.url.replace("/api", "/xxapi");
+app.use((req2, res, next) => {
+  const originalUrl = req2.url;
+  if (req2.url.startsWith("/.netlify/functions/xxapi")) {
+    req2.url = req2.url.replace("/.netlify/functions/xxapi", "/xxapi");
+  } else if (req2.url.startsWith("/api/xxapi")) {
+    req2.url = req2.url.replace("/api/xxapi", "/xxapi");
+  } else if (req2.url.startsWith("/api")) {
+    req2.url = req2.url.replace("/api", "/xxapi");
   }
   const isFrontendRoute = [
     "/buyinrdetail",
@@ -1432,48 +1432,48 @@ app.use((req, res, next) => {
     "/linkkycpartner",
     "/test",
     "/home"
-  ].some((route) => req.url.startsWith(route) || req.path && req.path.startsWith(route));
-  const acceptsHtml = !!(req.headers.accept && req.headers.accept.includes("text/html"));
-  if (!req.url.startsWith("/xxapi") && req.url !== "/" && !req.url.startsWith("/admin") && !req.url.includes(".") && !isFrontendRoute && !acceptsHtml) {
-    req.url = "/xxapi" + (req.url.startsWith("/") ? "" : "/") + req.url;
+  ].some((route) => req2.url.startsWith(route) || req2.path && req2.path.startsWith(route));
+  const acceptsHtml = !!(req2.headers.accept && req2.headers.accept.includes("text/html"));
+  if (!req2.url.startsWith("/xxapi") && req2.url !== "/" && !req2.url.startsWith("/admin") && !req2.url.includes(".") && !isFrontendRoute && !acceptsHtml) {
+    req2.url = "/xxapi" + (req2.url.startsWith("/") ? "" : "/") + req2.url;
   }
-  if (originalUrl !== req.url) {
-    console.log(`[URL Rewrite] Normalized: ${originalUrl} -> ${req.url}`);
+  if (originalUrl !== req2.url) {
+    console.log(`[URL Rewrite] Normalized: ${originalUrl} -> ${req2.url}`);
   }
   next();
 });
-app.use((req, res, next) => {
+app.use((req2, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE, PATCH");
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, X-Requested-With, INDIATOKEN, token");
-  if (req.method === "OPTIONS") {
+  if (req2.method === "OPTIONS") {
     return res.sendStatus(200);
   }
   next();
 });
-function getClientIp(req) {
-  if (!req) return "127.0.0.1";
-  const forwarded = req.headers ? req.headers["x-forwarded-for"] : null;
+function getClientIp(req2) {
+  if (!req2) return "127.0.0.1";
+  const forwarded = req2.headers ? req2.headers["x-forwarded-for"] : null;
   if (forwarded) {
     const raw = Array.isArray(forwarded) ? forwarded[0] : String(forwarded);
     return raw.split(",")[0].trim();
   }
-  if (req.ip) return String(req.ip);
-  if (req.socket && req.socket.remoteAddress) return String(req.socket.remoteAddress);
+  if (req2.ip) return String(req2.ip);
+  if (req2.socket && req2.socket.remoteAddress) return String(req2.socket.remoteAddress);
   return "127.0.0.1";
 }
-app.use("/xxapi", async (req, res, next) => {
+app.use("/xxapi", async (req2, res, next) => {
   try {
     const log = new GeneralLog({
-      endpoint: req.originalUrl,
-      method: req.method,
-      headers: req.headers,
-      body: req.body,
-      query: req.query,
-      ip: getClientIp(req)
+      endpoint: req2.originalUrl,
+      method: req2.method,
+      headers: req2.headers,
+      body: req2.body,
+      query: req2.query,
+      ip: getClientIp(req2)
     });
     await log.save();
-    console.log(`[API Log] Saved request to ${req.originalUrl}`);
+    console.log(`[API Log] Saved request to ${req2.originalUrl}`);
   } catch (err) {
     console.error("Error saving API log to MongoDB:", err);
   }
@@ -1560,8 +1560,8 @@ function invalidateUserCache(phoneOrId) {
   teamInfoMemoryCache.delete(target);
   teamInfoThreeCache.delete(target);
 }
-async function getUserByToken(req) {
-  let token = req.headers["indiatoken"] || req.headers["token"] || req.headers["INDIATOKEN"] || req.query?.token || req.query?.indiatoken;
+async function getUserByToken(req2) {
+  let token = req2.headers["indiatoken"] || req2.headers["token"] || req2.headers["INDIATOKEN"] || req2.query?.token || req2.query?.indiatoken;
   if (!token) return null;
   if (typeof token === "string") {
     if (token.includes(",")) {
@@ -1650,10 +1650,10 @@ function getCleanPhone(phone) {
   const formattedPhone = "+91" + cleanPhone;
   return { cleanPhone, formattedPhone };
 }
-function extractPhoneFromReq(req) {
-  if (!req) return "";
-  const body = req.body || {};
-  const query = req.query || {};
+function extractPhoneFromReq(req2) {
+  if (!req2) return "";
+  const body = req2.body || {};
+  const query = req2.query || {};
   let parsedBody = body;
   if (typeof body === "string") {
     try {
@@ -2093,21 +2093,21 @@ async function getDistinctPayeeUpi(tx, buyerSelectedUpi, user) {
   return "dhhrhdh@upi";
 }
 app.use("/uploads", import_express.default.static(import_path.default.join(process.cwd(), "public", "uploads")));
-app.post("/api/support/upload", upload.single("file"), async (req, res) => {
+app.post("/api/support/upload", upload.single("file"), async (req2, res) => {
   try {
-    if (!req.file) {
+    if (!req2.file) {
       return res.json({ code: 400, msg: "No file uploaded" });
     }
     const uploadsDir = import_path.default.join(process.cwd(), "public", "uploads");
     if (!import_fs.default.existsSync(uploadsDir)) {
       import_fs.default.mkdirSync(uploadsDir, { recursive: true });
     }
-    const ext = import_path.default.extname(req.file.originalname) || ".bin";
+    const ext = import_path.default.extname(req2.file.originalname) || ".bin";
     const filename = `file_${Date.now()}_${Math.random().toString(36).substring(2, 8)}${ext}`;
     const filePath = import_path.default.join(uploadsDir, filename);
-    import_fs.default.writeFileSync(filePath, req.file.buffer);
+    import_fs.default.writeFileSync(filePath, req2.file.buffer);
     let mediaType = "document";
-    const mime = req.file.mimetype || "";
+    const mime = req2.file.mimetype || "";
     if (mime.startsWith("image/")) mediaType = "image";
     else if (mime.startsWith("video/")) mediaType = "video";
     else if (mime.startsWith("audio/")) mediaType = "voice";
@@ -2115,17 +2115,17 @@ app.post("/api/support/upload", upload.single("file"), async (req, res) => {
       code: 0,
       fileUrl: `/uploads/${filename}`,
       mediaType,
-      fileName: req.file.originalname
+      fileName: req2.file.originalname
     });
   } catch (e) {
     console.error("[Support Upload Error]", e);
     return res.json({ code: 500, msg: e.message || "File upload failed" });
   }
 });
-app.get("/api/support/session-info", async (req, res) => {
+app.get("/api/support/session-info", async (req2, res) => {
   try {
     await connectToDatabase();
-    const token = String(req.query.token || req.query.session || "").trim();
+    const token = String(req2.query.token || req2.query.session || "").trim();
     if (!token) {
       return res.json({ code: 400, valid: false, msg: "Support session token is required" });
     }
@@ -2162,10 +2162,10 @@ app.get("/api/support/session-info", async (req, res) => {
     return res.json({ code: 500, valid: false, msg: e.message || "Failed to fetch support session" });
   }
 });
-app.post("/api/support/send-message", async (req, res) => {
+app.post("/api/support/send-message", async (req2, res) => {
   try {
     await connectToDatabase();
-    const { token, text, mediaUrl, mediaType, mediaName, sender, senderName } = req.body;
+    const { token, text, mediaUrl, mediaType, mediaName, sender, senderName } = req2.body;
     if (!token) {
       return res.json({ code: 400, msg: "Session token is required" });
     }
@@ -2193,7 +2193,7 @@ app.post("/api/support/send-message", async (req, res) => {
     return res.json({ code: 500, msg: e.message || "Failed to send message" });
   }
 });
-app.get("/api/support/admin/sessions", async (req, res) => {
+app.get("/api/support/admin/sessions", async (req2, res) => {
   try {
     await connectToDatabase();
     const sessions = await SupportSession.find({}).sort({ createdAt: -1 }).limit(100);
@@ -2203,10 +2203,10 @@ app.get("/api/support/admin/sessions", async (req, res) => {
     return res.json({ code: 500, msg: e.message || "Failed to fetch admin support sessions" });
   }
 });
-app.post("/api/support/admin/extend-session", async (req, res) => {
+app.post("/api/support/admin/extend-session", async (req2, res) => {
   try {
     await connectToDatabase();
-    const { token, minutes } = req.body;
+    const { token, minutes } = req2.body;
     const session = await SupportSession.findOne({ token });
     if (!session) return res.json({ code: 404, msg: "Session not found" });
     const addMs = (minutes || 10) * 60 * 1e3;
@@ -2218,10 +2218,10 @@ app.post("/api/support/admin/extend-session", async (req, res) => {
     return res.json({ code: 500, msg: e.message });
   }
 });
-app.post("/api/support/admin/close-session", async (req, res) => {
+app.post("/api/support/admin/close-session", async (req2, res) => {
   try {
     await connectToDatabase();
-    const { token } = req.body;
+    const { token } = req2.body;
     const session = await SupportSession.findOne({ token });
     if (!session) return res.json({ code: 404, msg: "Session not found" });
     session.status = "closed";
@@ -2231,11 +2231,11 @@ app.post("/api/support/admin/close-session", async (req, res) => {
     return res.json({ code: 500, msg: e.message });
   }
 });
-app.post("/xxapi/register", async (req, res) => {
+app.post("/xxapi/register", async (req2, res) => {
   try {
     await connectToDatabase();
-    const { phone, password, repassword, smscode } = req.body;
-    const invitercode = (req.body.invitercode || req.body.referral_code || req.body.referralCode || req.body.inviteCode || req.body.invite_code || req.body.inviter || req.body.code || "").toString().trim();
+    const { phone, password, repassword, smscode } = req2.body;
+    const invitercode = (req2.body.invitercode || req2.body.referral_code || req2.body.referralCode || req2.body.inviteCode || req2.body.invite_code || req2.body.inviter || req2.body.code || "").toString().trim();
     const { cleanPhone } = getCleanPhone(phone);
     if (!cleanPhone) {
       return res.json({ code: 400, msg: "Phone number is required" });
@@ -2261,8 +2261,8 @@ app.post("/xxapi/register", async (req, res) => {
       return res.json({ code: 500010, status: 400, msg: otpResult.msg || "OTP code error", message: otpResult.msg || "OTP code error" });
     }
     const uniqueToken = import_crypto.default.randomBytes(16).toString("hex");
-    const ip = getClientIp(req);
-    const userAgent = req.headers && req.headers["user-agent"] || "";
+    const ip = getClientIp(req2);
+    const userAgent = req2.headers && req2.headers["user-agent"] || "";
     const { device, browser } = parseUserAgentServer(userAgent);
     const location = getApproxLocation(ip);
     const initialSession = {
@@ -2307,15 +2307,15 @@ app.post("/xxapi/register", async (req, res) => {
     return res.json({ code: 500, msg: err?.message || "Internal server error" });
   }
 });
-app.post(["/xxapi/checkSmsNew", "/xxapi/checkSms", "/xxapi/sendRegSms"], async (req, res) => {
-  console.log("[checkSmsNew] Called body:", req.body, "query:", req.query);
+app.post(["/xxapi/checkSmsNew", "/xxapi/checkSms", "/xxapi/sendRegSms"], async (req2, res) => {
+  console.log("[checkSmsNew] Called body:", req2.body, "query:", req2.query);
   try {
-    const rawPhone = extractPhoneFromReq(req);
+    const rawPhone = extractPhoneFromReq(req2);
     const { cleanPhone } = getCleanPhone(rawPhone);
     if (!cleanPhone || cleanPhone.length < 10) {
       return res.json({ code: 400, status: 400, msg: "Please enter a valid 10-digit mobile number" });
     }
-    const password = extractPasswordFromReq(req);
+    const password = extractPasswordFromReq(req2);
     await connectToDatabase();
     const user = await User.findOne(buildPhoneQuery(cleanPhone));
     if (!user) {
@@ -2379,13 +2379,13 @@ app.post(["/xxapi/checkSmsNew", "/xxapi/checkSms", "/xxapi/sendRegSms"], async (
     return res.json({ code: 500, msg: "Internal server error" });
   }
 });
-app.post("/xxapi/resetpassword", async (req, res) => {
-  console.log("[resetpassword] Called", req.body);
+app.post("/xxapi/resetpassword", async (req2, res) => {
+  console.log("[resetpassword] Called", req2.body);
   try {
     await connectToDatabase();
-    const rawPhone = extractPhoneFromReq(req);
+    const rawPhone = extractPhoneFromReq(req2);
     const { cleanPhone } = getCleanPhone(rawPhone);
-    const { password, oldPassword, smscode } = req.body || {};
+    const { password, oldPassword, smscode } = req2.body || {};
     if (!cleanPhone) {
       return res.json({ code: 400, msg: "Phone number is required" });
     }
@@ -2424,12 +2424,12 @@ app.post("/xxapi/resetpassword", async (req, res) => {
     return res.json({ code: 500, msg: "Internal server error" });
   }
 });
-app.post(["/xxapi/getsendtken", "/xxapi/sendResetSms", "/xxapi/sendForgotSms", "/xxapi/getResetOtp"], async (req, res) => {
-  console.log("[getsendtken / Captcha Token] Called body:", req.body, "query:", req.query);
+app.post(["/xxapi/getsendtken", "/xxapi/sendResetSms", "/xxapi/sendForgotSms", "/xxapi/getResetOtp"], async (req2, res) => {
+  console.log("[getsendtken / Captcha Token] Called body:", req2.body, "query:", req2.query);
   try {
-    let cleanPhone = extractPhoneFromReq(req);
+    let cleanPhone = extractPhoneFromReq(req2);
     if (!cleanPhone || cleanPhone.length < 10) {
-      const user = await getUserByToken(req);
+      const user = await getUserByToken(req2);
       if (user && user.phone) {
         cleanPhone = getCleanPhone(user.phone).cleanPhone;
       }
@@ -2450,15 +2450,15 @@ app.post(["/xxapi/getsendtken", "/xxapi/sendResetSms", "/xxapi/sendForgotSms", "
     return res.json({ code: 500, msg: "Internal server error" });
   }
 });
-app.post(["/xxapi/sendsms", "/xxapi/sendSms"], async (req, res) => {
-  console.log("[sendsms] Called body:", req.body, "query:", req.query);
+app.post(["/xxapi/sendsms", "/xxapi/sendSms"], async (req2, res) => {
+  console.log("[sendsms] Called body:", req2.body, "query:", req2.query);
   try {
-    const rawPhone = extractPhoneFromReq(req);
+    const rawPhone = extractPhoneFromReq(req2);
     const { cleanPhone } = getCleanPhone(rawPhone);
     if (!cleanPhone || cleanPhone.length < 10) {
       return res.json({ code: 400, msg: "Phone number is required" });
     }
-    const purpose = String(req.body?.purpose || req.query?.purpose || "").toLowerCase();
+    const purpose = String(req2.body?.purpose || req2.query?.purpose || "").toLowerCase();
     await connectToDatabase();
     if (purpose.includes("reg")) {
       const existingUser = await User.findOne(buildPhoneQuery(cleanPhone));
@@ -2519,15 +2519,15 @@ function isPasswordMatch(givenPwd, userDoc) {
   }
   return false;
 }
-app.post(["/xxapi/sendLoginSms", "/xxapi/sendLoginOtp", "/xxapi/loginSms"], async (req, res) => {
-  console.log("[sendLoginSms] Called body:", req.body, "query:", req.query);
+app.post(["/xxapi/sendLoginSms", "/xxapi/sendLoginOtp", "/xxapi/loginSms"], async (req2, res) => {
+  console.log("[sendLoginSms] Called body:", req2.body, "query:", req2.query);
   try {
-    const rawPhone = extractPhoneFromReq(req);
+    const rawPhone = extractPhoneFromReq(req2);
     const { cleanPhone } = getCleanPhone(rawPhone);
     if (!cleanPhone || cleanPhone.length < 10) {
       return res.json({ code: 400, msg: "Phone number is required" });
     }
-    const givenPassword = extractPasswordFromReq(req);
+    const givenPassword = extractPasswordFromReq(req2);
     await connectToDatabase();
     const registeredUser = await User.findOne(buildPhoneQuery(cleanPhone));
     if (!registeredUser) {
@@ -2585,15 +2585,15 @@ app.post(["/xxapi/sendLoginSms", "/xxapi/sendLoginOtp", "/xxapi/loginSms"], asyn
     return res.json({ code: 500, msg: "Server error sending SMS" });
   }
 });
-app.post(["/xxsapi/slid/verify", "/xxapi/checkSliderCaptcha"], async (req, res) => {
+app.post(["/xxsapi/slid/verify", "/xxapi/checkSliderCaptcha"], async (req2, res) => {
   console.log("[POST /xxsapi/slid/verify] Verify captcha request - returning instant success");
   return res.status(200).json({ code: 0, msg: "success", data: "verified" });
 });
-app.post("/xxapi/login", async (req, res) => {
+app.post("/xxapi/login", async (req2, res) => {
   try {
     await connectToDatabase();
-    const { phone, smscode, trustedDeviceId, clientId, sameDeviceBypass } = req.body || {};
-    const password = extractPasswordFromReq(req);
+    const { phone, smscode, trustedDeviceId, clientId, sameDeviceBypass } = req2.body || {};
+    const password = extractPasswordFromReq(req2);
     const { cleanPhone } = getCleanPhone(phone || "");
     if (!cleanPhone) {
       return res.json({ code: 400, msg: "Phone number is required" });
@@ -2657,8 +2657,8 @@ app.post("/xxapi/login", async (req, res) => {
       user.role = adminConfig[cleanPhone].role;
     }
     const uniqueToken = import_crypto.default.randomBytes(16).toString("hex");
-    const ip = getClientIp(req);
-    const userAgent = req.headers && req.headers["user-agent"] || "";
+    const ip = getClientIp(req2);
+    const userAgent = req2.headers && req2.headers["user-agent"] || "";
     const { device, browser } = parseUserAgentServer(userAgent);
     const location = getApproxLocation(ip);
     const newSession = {
@@ -2691,13 +2691,13 @@ app.post("/xxapi/login", async (req, res) => {
     return res.json({ code: 500, msg: "Server error during login" });
   }
 });
-app.get("/xxapi/sessions", async (req, res) => {
+app.get("/xxapi/sessions", async (req2, res) => {
   try {
-    const user = await getUserByToken(req);
+    const user = await getUserByToken(req2);
     if (!user) {
       return res.json({ code: 403, msg: "Unauthorized" });
     }
-    let currentToken = req.headers["indiatoken"] || req.headers["token"] || req.headers["INDIATOKEN"] || req.query?.token || req.query?.indiatoken;
+    let currentToken = req2.headers["indiatoken"] || req2.headers["token"] || req2.headers["INDIATOKEN"] || req2.query?.token || req2.query?.indiatoken;
     if (currentToken && typeof currentToken === "string" && currentToken.includes(",")) {
       currentToken = currentToken.split(",").map((t) => t.trim()).filter(Boolean).find((p) => p.startsWith("token-")) || currentToken.split(",")[0].trim();
     }
@@ -2721,13 +2721,13 @@ app.get("/xxapi/sessions", async (req, res) => {
     return res.json({ code: 500, msg: "Internal server error" });
   }
 });
-app.post("/xxapi/logoutSession", async (req, res) => {
+app.post("/xxapi/logoutSession", async (req2, res) => {
   try {
-    const user = await getUserByToken(req);
+    const user = await getUserByToken(req2);
     if (!user) {
       return res.json({ code: 403, msg: "Unauthorized" });
     }
-    const { tokenToLogout } = req.body;
+    const { tokenToLogout } = req2.body;
     if (!tokenToLogout) {
       return res.json({ code: 400, msg: "Token is required" });
     }
@@ -2743,13 +2743,13 @@ app.post("/xxapi/logoutSession", async (req, res) => {
     return res.json({ code: 500, msg: "Internal server error" });
   }
 });
-app.post("/xxapi/logoutAllOtherSessions", async (req, res) => {
+app.post("/xxapi/logoutAllOtherSessions", async (req2, res) => {
   try {
-    const user = await getUserByToken(req);
+    const user = await getUserByToken(req2);
     if (!user) {
       return res.json({ code: 403, msg: "Unauthorized" });
     }
-    let currentToken = req.headers["indiatoken"] || req.headers["token"] || req.headers["INDIATOKEN"] || req.query?.token || req.query?.indiatoken;
+    let currentToken = req2.headers["indiatoken"] || req2.headers["token"] || req2.headers["INDIATOKEN"] || req2.query?.token || req2.query?.indiatoken;
     if (currentToken && typeof currentToken === "string" && currentToken.includes(",")) {
       currentToken = currentToken.split(",").map((t) => t.trim()).filter(Boolean).find((p) => p.startsWith("token-")) || currentToken.split(",")[0].trim();
     }
@@ -2765,11 +2765,11 @@ app.post("/xxapi/logoutAllOtherSessions", async (req, res) => {
     return res.json({ code: 500, msg: "Internal server error" });
   }
 });
-app.post("/xxapi/logout", async (req, res) => {
+app.post("/xxapi/logout", async (req2, res) => {
   try {
-    const user = await getUserByToken(req);
+    const user = await getUserByToken(req2);
     if (user) {
-      let currentToken = req.headers["indiatoken"] || req.headers["token"] || req.headers["INDIATOKEN"] || req.query?.token || req.query?.indiatoken;
+      let currentToken = req2.headers["indiatoken"] || req2.headers["token"] || req2.headers["INDIATOKEN"] || req2.query?.token || req2.query?.indiatoken;
       if (currentToken && typeof currentToken === "string" && currentToken.includes(",")) {
         currentToken = currentToken.split(",").map((t) => t.trim()).filter(Boolean).find((p) => p.startsWith("token-")) || currentToken.split(",")[0].trim();
       }
@@ -2842,9 +2842,9 @@ async function getUserSellerTransactions(user) {
   }
   return uniqueTxs;
 }
-app.get(["/xxapi/userinfo", "/userinfo"], async (req, res) => {
+app.get(["/xxapi/userinfo", "/userinfo"], async (req2, res) => {
   try {
-    let user = await getUserByToken(req);
+    let user = await getUserByToken(req2);
     if (!user) {
       return res.json({
         code: 403,
@@ -3079,13 +3079,13 @@ app.get(["/xxapi/userinfo", "/userinfo"], async (req, res) => {
     });
   }
 });
-app.post("/xxapi/bank", async (req, res) => {
+app.post("/xxapi/bank", async (req2, res) => {
   try {
-    const user = await getUserByToken(req);
+    const user = await getUserByToken(req2);
     if (!user) {
       return res.json({ code: 403, msg: "Unauthorized" });
     }
-    const bankData = req.body;
+    const bankData = req2.body;
     if (!user.bankDetails) user.bankDetails = [];
     user.bankDetails.push(bankData);
     user.markModified("bankDetails");
@@ -3097,13 +3097,13 @@ app.post("/xxapi/bank", async (req, res) => {
     return res.json({ code: 500, msg: "Internal server error" });
   }
 });
-app.post("/xxapi/bank/edit", async (req, res) => {
+app.post("/xxapi/bank/edit", async (req2, res) => {
   try {
-    const user = await getUserByToken(req);
+    const user = await getUserByToken(req2);
     if (!user) {
       return res.json({ code: 403, msg: "Unauthorized" });
     }
-    const bankData = req.body;
+    const bankData = req2.body;
     user.bankDetails = [bankData];
     user.markModified("bankDetails");
     await user.save();
@@ -3114,9 +3114,9 @@ app.post("/xxapi/bank/edit", async (req, res) => {
     return res.json({ code: 500, msg: "Internal server error" });
   }
 });
-app.get("/xxapi/bank", async (req, res) => {
+app.get("/xxapi/bank", async (req2, res) => {
   try {
-    const user = await getUserByToken(req);
+    const user = await getUserByToken(req2);
     return res.json({
       code: 0,
       msg: "success",
@@ -3127,27 +3127,27 @@ app.get("/xxapi/bank", async (req, res) => {
     return res.json({ code: 500, msg: "Internal server error" });
   }
 });
-app.post("/xxapi/bank/pause", async (req, res) => {
+app.post("/xxapi/bank/pause", async (req2, res) => {
   return res.json({ code: 0, msg: "success" });
 });
-app.post("/xxapi/bank/active", async (req, res) => {
+app.post("/xxapi/bank/active", async (req2, res) => {
   return res.json({ code: 0, msg: "success" });
 });
-app.get("/xxapi/availablebank", async (req, res) => {
-  const user = await getUserByToken(req);
+app.get("/xxapi/availablebank", async (req2, res) => {
+  const user = await getUserByToken(req2);
   return res.json({
     code: 0,
     msg: "success",
     data: user ? user.bankDetails || [] : []
   });
 });
-app.post("/xxapi/authupi", async (req, res) => {
+app.post("/xxapi/authupi", async (req2, res) => {
   try {
-    const user = await getUserByToken(req);
+    const user = await getUserByToken(req2);
     if (!user) {
       return res.json({ code: 403, msg: "Unauthorized" });
     }
-    const { ctid, utr } = req.body;
+    const { ctid, utr } = req2.body;
     if (!user.collectionTools) {
       user.collectionTools = getDefaultCollectionTools();
     }
@@ -3170,9 +3170,9 @@ app.post("/xxapi/authupi", async (req, res) => {
     return res.json({ code: 500, msg: "Internal server error" });
   }
 });
-app.get(["/xxapi/upidetail/:id", "/xxapi/upidetail"], async (req, res) => {
-  const paramId = String(req.params.id || req.query.vpa || req.query.upi || req.query.id || req.query.ctid || "").trim();
-  const user = await getUserByToken(req);
+app.get(["/xxapi/upidetail/:id", "/xxapi/upidetail"], async (req2, res) => {
+  const paramId = String(req2.params.id || req2.query.vpa || req2.query.upi || req2.query.id || req2.query.ctid || "").trim();
+  const user = await getUserByToken(req2);
   let upi = "";
   let tool = null;
   if (paramId && paramId.includes("@") && paramId !== "Pending verification") {
@@ -3288,8 +3288,8 @@ app.get(["/xxapi/upidetail/:id", "/xxapi/upidetail"], async (req, res) => {
     }
   });
 });
-app.get("/xxapi/lookup-upi", async (req, res) => {
-  const vpa = String(req.query.vpa || req.query.upi || "").trim();
+app.get("/xxapi/lookup-upi", async (req2, res) => {
+  const vpa = String(req2.query.vpa || req2.query.upi || "").trim();
   if (!vpa || !vpa.includes("@")) {
     return res.json({ code: 400, status: false, msg: "Valid VPA required (e.g. 9060873927@upi)" });
   }
@@ -3308,13 +3308,13 @@ app.get("/xxapi/lookup-upi", async (req, res) => {
     return res.json({ code: 500, status: false, msg: e.message });
   }
 });
-app.post("/xxapi/safety_code", async (req, res) => {
+app.post("/xxapi/safety_code", async (req2, res) => {
   try {
-    const user = await getUserByToken(req);
+    const user = await getUserByToken(req2);
     if (!user) {
       return res.json({ code: 403, msg: "Unauthorized" });
     }
-    const code = req.body.safety_code || req.body.code || req.body.safetyCode;
+    const code = req2.body.safety_code || req2.body.code || req2.body.safetyCode;
     user.safetyCode = code;
     await user.save();
     console.log(`[Safety Code] Saved safety code for ${user.phone}`);
@@ -3324,8 +3324,8 @@ app.post("/xxapi/safety_code", async (req, res) => {
     return res.json({ code: 500, msg: "Internal server error" });
   }
 });
-app.get("/xxapi/cwkyc", async (req, res) => {
-  const user = await getUserByToken(req);
+app.get("/xxapi/cwkyc", async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });
   return res.json({
     code: 0,
@@ -3338,27 +3338,27 @@ app.get("/xxapi/cwkyc", async (req, res) => {
     }
   });
 });
-app.post("/xxapi/cwkyc", async (req, res) => {
-  const user = await getUserByToken(req);
+app.post("/xxapi/cwkyc", async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });
-  user.kycDetails = req.body;
-  user.realName = req.body.realName || req.body.name || user.realName;
+  user.kycDetails = req2.body;
+  user.realName = req2.body.realName || req2.body.name || user.realName;
   user.kycStatus = 1;
   user.markModified("kycDetails");
   await user.save();
   return res.json({ code: 0, msg: "success" });
 });
-app.patch("/xxapi/cwkyc", async (req, res) => {
-  const user = await getUserByToken(req);
+app.patch("/xxapi/cwkyc", async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });
-  user.kycDetails = { ...user.kycDetails || {}, ...req.body };
-  user.realName = req.body.realName || req.body.name || user.realName;
+  user.kycDetails = { ...user.kycDetails || {}, ...req2.body };
+  user.realName = req2.body.realName || req2.body.name || user.realName;
   user.kycStatus = 1;
   user.markModified("kycDetails");
   await user.save();
   return res.json({ code: 0, msg: "success" });
 });
-app.get("/xxapi/config", async (req, res) => {
+app.get("/xxapi/config", async (req2, res) => {
   let dbConfig = null;
   try {
     dbConfig = await SiteConfig.findOne({ key: "global" });
@@ -3410,7 +3410,7 @@ app.get("/xxapi/config", async (req, res) => {
       defaultUsdtProtocol: dbConfig?.defaultUsdtProtocol || "trc20",
       usdtProtocolSwitchEnabled: false,
       currency: "INR",
-      registerHost: req.protocol + "://" + req.get("host") + "/#/rs/",
+      registerHost: req2.protocol + "://" + req2.get("host") + "/#/rs/",
       tgChannelLink: "https://t.me/+4F3O2KrkP98yZjk1",
       rewardRules: {
         freeze_comp_reward: { name: "freeze_comp_reward", fixed: 0, ratio: 0, minCondi: 0, ruleActive: 0, rule: "{}" },
@@ -3437,9 +3437,9 @@ app.get("/xxapi/config", async (req, res) => {
     }
   });
 });
-app.post("/xxapi/client_error", (req, res) => {
+app.post("/xxapi/client_error", (req2, res) => {
   console.log("--- CLIENT ERROR RECEIVED ---");
-  const body = req.body || {};
+  const body = req2.body || {};
   console.log("Message:", body.message);
   console.log("Filename:", body.filename);
   console.log("Line:", body.lineno, "Col:", body.colno);
@@ -3455,7 +3455,7 @@ app.post("/xxapi/client_error", (req, res) => {
   }
   return res.json({ code: 0, msg: "logged" });
 });
-app.get("/xxapi/simpConfig", async (req, res) => {
+app.get("/xxapi/simpConfig", async (req2, res) => {
   return res.json({
     code: 0,
     msg: "success",
@@ -3484,8 +3484,8 @@ var buildNewbieRules = (params, totalBought = 0, hasLinkedUpi = false) => {
     { id: 5, name: "Purchase 1000 IToken", activityCode: "newbie_buyitoken", title: "Purchase 1000 IToken", reward: 200, status: isBuyDone ? "done" : "undone", frontd_url: "/buy", frontUrl: "/buy" }
   ];
 };
-var getNewbieUserData = async (req) => {
-  const user = await getUserByToken(req);
+var getNewbieUserData = async (req2) => {
+  const user = await getUserByToken(req2);
   let userParams = {
     newbie_tg_channel: 0,
     newbie_tg_customer: 0,
@@ -3554,8 +3554,8 @@ var getNewbieUserData = async (req) => {
   }
   return { user, userParams, rules, isDone, totalBought, cappedBought, allTasksCompleted, isClaimed };
 };
-app.get(["/xxapi/newbieDayStep/init", "/newbieDayStep/init"], async (req, res) => {
-  const { userParams, rules, isDone, cappedBought, allTasksCompleted, isClaimed } = await getNewbieUserData(req);
+app.get(["/xxapi/newbieDayStep/init", "/newbieDayStep/init"], async (req2, res) => {
+  const { userParams, rules, isDone, cappedBought, allTasksCompleted, isClaimed } = await getNewbieUserData(req2);
   return res.json({
     code: 0,
     msg: "success",
@@ -3584,8 +3584,8 @@ app.get(["/xxapi/newbieDayStep/init", "/newbieDayStep/init"], async (req, res) =
     }
   });
 });
-app.get(["/xxapi/newbieStepTotal/init", "/newbieStepTotal/init"], async (req, res) => {
-  const { userParams, rules, isDone, cappedBought, allTasksCompleted, isClaimed } = await getNewbieUserData(req);
+app.get(["/xxapi/newbieStepTotal/init", "/newbieStepTotal/init"], async (req2, res) => {
+  const { userParams, rules, isDone, cappedBought, allTasksCompleted, isClaimed } = await getNewbieUserData(req2);
   return res.json({
     code: 0,
     msg: "success",
@@ -3653,8 +3653,8 @@ function buildTeamIdentifiers(user) {
   if (user.id) addVal(user.id);
   return Array.from(ids);
 }
-async function getInviteNewbieData(req) {
-  const user = await getUserByToken(req);
+async function getInviteNewbieData(req2) {
+  const user = await getUserByToken(req2);
   if (!user) return null;
   const cacheKey = String(user._id || user.phone);
   const cached = inviteNewbieMemoryCache.get(cacheKey);
@@ -3733,8 +3733,8 @@ async function getInviteNewbieData(req) {
   inviteNewbieMemoryCache.set(cacheKey, { data: resultData, timestamp: Date.now() });
   return resultData;
 }
-app.get(["/xxapi/inviteNewbieStepTotal/init", "/xxapi/oldRptNew/init"], async (req, res) => {
-  const data = await getInviteNewbieData(req);
+app.get(["/xxapi/inviteNewbieStepTotal/init", "/xxapi/oldRptNew/init"], async (req2, res) => {
+  const data = await getInviteNewbieData(req2);
   if (!data) return res.json({ code: 403, msg: "Unauthorized" });
   const { paramsObj, inviteStepParamsObj, dayStepParamsObj, claimedCount, claimedAmt } = data;
   return res.json({
@@ -3762,8 +3762,8 @@ app.get(["/xxapi/inviteNewbieStepTotal/init", "/xxapi/oldRptNew/init"], async (r
     }
   });
 });
-app.post(["/xxapi/oldRptNew/reward", "/xxapi/inviteNewbieStepTotal/reward"], async (req, res) => {
-  const data = await getInviteNewbieData(req);
+app.post(["/xxapi/oldRptNew/reward", "/xxapi/inviteNewbieStepTotal/reward"], async (req2, res) => {
+  const data = await getInviteNewbieData(req2);
   if (!data) return res.json({ code: 403, msg: "Unauthorized" });
   const { user, directMembers, claimedPhones } = data;
   const cleanClaimedPhonesSet = new Set(claimedPhones);
@@ -3895,8 +3895,8 @@ app.all([
   "/bguide/reward",
   "/newbieDayStep/reward",
   "/newbieStepTotal/reward"
-], async (req, res) => {
-  const user = await getUserByToken(req);
+], async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });
   await claimNewbieRewardAtomically(user);
   return res.json({
@@ -3912,8 +3912,8 @@ app.all([
     }
   });
 });
-app.get("/xxapi/inviteDayStep/init", async (req, res) => {
-  const data = await getInviteNewbieData(req);
+app.get("/xxapi/inviteDayStep/init", async (req2, res) => {
+  const data = await getInviteNewbieData(req2);
   return res.json({
     code: 0,
     msg: "success",
@@ -3929,10 +3929,10 @@ app.get("/xxapi/inviteDayStep/init", async (req, res) => {
     }
   });
 });
-app.post(["/xxapi/inviteDayStep/reward/:id", "/xxapi/inviteDayStep/reward"], async (req, res) => {
-  const user = await getUserByToken(req);
+app.post(["/xxapi/inviteDayStep/reward/:id", "/xxapi/inviteDayStep/reward"], async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });
-  const friendKey = req.params.id || req.body.id || req.query.id;
+  const friendKey = req2.params.id || req2.body.id || req2.query.id;
   if (!friendKey) return res.json({ code: 1, msg: "Friend identifier required" });
   const claimedPhones = Array.isArray(user.claimedInviteFriendPhones) ? user.claimedInviteFriendPhones : [];
   const directMember = await User.findOne({
@@ -3981,7 +3981,7 @@ app.post(["/xxapi/inviteDayStep/reward/:id", "/xxapi/inviteDayStep/reward"], asy
   console.log(`[Invite Step Reward] User ${updatedUser.phone} claimed \u20B9200 for friend ${friendKey}. Button is now disabled.`);
   return res.json({ code: 0, msg: "Successfully claimed \u20B9200 for this friend!" });
 });
-app.get("/xxapi/buyInrTimes/init", async (req, res) => {
+app.get("/xxapi/buyInrTimes/init", async (req2, res) => {
   return res.json({
     code: 0,
     msg: "success",
@@ -3992,11 +3992,11 @@ app.get("/xxapi/buyInrTimes/init", async (req, res) => {
     }
   });
 });
-app.post("/xxapi/buyInrTimes/reward", async (req, res) => {
+app.post("/xxapi/buyInrTimes/reward", async (req2, res) => {
   return res.json({ code: 0, msg: "success" });
 });
-app.get("/xxapi/buyInrAmount/init", async (req, res) => {
-  const user = await getUserByToken(req);
+app.get("/xxapi/buyInrAmount/init", async (req2, res) => {
+  const user = await getUserByToken(req2);
   let totalBought = 0;
   let isDone = false;
   if (user) {
@@ -4023,13 +4023,13 @@ app.get("/xxapi/buyInrAmount/init", async (req, res) => {
     }
   });
 });
-app.post("/xxapi/buyInrAmount/reward", async (req, res) => {
-  const user = await getUserByToken(req);
+app.post("/xxapi/buyInrAmount/reward", async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });
   await claimNewbieRewardAtomically(user);
   return res.json({ code: 0, msg: "success", data: { reward: 200 } });
 });
-app.get("/xxapi/sellInrAmount/init", async (req, res) => {
+app.get("/xxapi/sellInrAmount/init", async (req2, res) => {
   return res.json({
     code: 0,
     msg: "success",
@@ -4040,10 +4040,10 @@ app.get("/xxapi/sellInrAmount/init", async (req, res) => {
     }
   });
 });
-app.post("/xxapi/sellInrAmount/reward/:id/:amount", async (req, res) => {
+app.post("/xxapi/sellInrAmount/reward/:id/:amount", async (req2, res) => {
   return res.json({ code: 0, msg: "success" });
 });
-app.get("/xxapi/freezeComp/init", async (req, res) => {
+app.get("/xxapi/freezeComp/init", async (req2, res) => {
   return res.json({
     code: 0,
     msg: "success",
@@ -4054,7 +4054,7 @@ app.get("/xxapi/freezeComp/init", async (req, res) => {
     }
   });
 });
-app.post("/xxapi/freezeComp/reward", async (req, res) => {
+app.post("/xxapi/freezeComp/reward", async (req2, res) => {
   return res.json({ code: 0, msg: "success" });
 });
 app.all([
@@ -4063,10 +4063,10 @@ app.all([
   "/xxapi/activityCodeDone/:code",
   "/xxapi/bguide/activityCodeDone",
   "/xxapi/newbieDayStep/activityCodeDone"
-], async (req, res) => {
-  const user = await getUserByToken(req).catch(() => null);
+], async (req2, res) => {
+  const user = await getUserByToken(req2).catch(() => null);
   if (user) {
-    const code = req.params.code || req.body.code || req.query.code || req.body.activityCode;
+    const code = req2.params.code || req2.body.code || req2.query.code || req2.body.activityCode;
     if (code) {
       let userParams = {
         newbie_tg_channel: 0,
@@ -4107,7 +4107,7 @@ app.all([
   }
   return res.json({ code: 0, msg: "success" });
 });
-app.get("/xxapi/todayLotteryReward/init", async (req, res) => {
+app.get("/xxapi/todayLotteryReward/init", async (req2, res) => {
   return res.json({
     code: 0,
     msg: "success",
@@ -4118,10 +4118,10 @@ app.get("/xxapi/todayLotteryReward/init", async (req, res) => {
     }
   });
 });
-app.post("/xxapi/todayLotteryReward/claim", async (req, res) => {
+app.post("/xxapi/todayLotteryReward/claim", async (req2, res) => {
   return res.json({ code: 0, msg: "success" });
 });
-app.get("/xxapi/dailyFreeLottery/init", async (req, res) => {
+app.get("/xxapi/dailyFreeLottery/init", async (req2, res) => {
   return res.json({
     code: 0,
     msg: "success",
@@ -4131,10 +4131,10 @@ app.get("/xxapi/dailyFreeLottery/init", async (req, res) => {
     }
   });
 });
-app.post("/xxapi/dailyFreeLottery/spin", async (req, res) => {
+app.post("/xxapi/dailyFreeLottery/spin", async (req2, res) => {
   return res.json({ code: 0, msg: "success" });
 });
-app.get("/xxapi/sevenDayBuy/init", async (req, res) => {
+app.get("/xxapi/sevenDayBuy/init", async (req2, res) => {
   return res.json({
     code: 0,
     msg: "success",
@@ -4143,17 +4143,17 @@ app.get("/xxapi/sevenDayBuy/init", async (req, res) => {
     }
   });
 });
-app.post("/xxapi/sevenDayBuy/reward", async (req, res) => {
+app.post("/xxapi/sevenDayBuy/reward", async (req2, res) => {
   return res.json({ code: 0, msg: "success" });
 });
-app.post("/xxapi/tgbotbindtoken", async (req, res) => {
+app.post("/xxapi/tgbotbindtoken", async (req2, res) => {
   return res.json({ code: 0, msg: "success" });
 });
-app.get("/xxapi/tgbotbindtoken", async (req, res) => {
+app.get("/xxapi/tgbotbindtoken", async (req2, res) => {
   return res.json({ code: 0, msg: "success", data: {} });
 });
-app.get("/xxapi/teamDailyData/:id", async (req, res) => {
-  const user = await getUserByToken(req);
+app.get("/xxapi/teamDailyData/:id", async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) {
     return res.json({
       code: 0,
@@ -4172,7 +4172,7 @@ app.get("/xxapi/teamDailyData/:id", async (req, res) => {
       }
     });
   }
-  const { startSec, endSec } = getStartAndEndSecFromDateStr(req.params.id);
+  const { startSec, endSec } = getStartAndEndSecFromDateStr(req2.params.id);
   const dailyData = await calculateUserDailyData(user, startSec, endSec);
   return res.json({
     code: 0,
@@ -4180,29 +4180,29 @@ app.get("/xxapi/teamDailyData/:id", async (req, res) => {
     data: dailyData
   });
 });
-app.get("/xxapi/minSellIToken/:id/:amount", async (req, res) => {
+app.get("/xxapi/minSellIToken/:id/:amount", async (req2, res) => {
   return res.json({ code: 0, msg: "success", data: {} });
 });
-app.get("/xxapi/minMaxUpiSell/:id/:amount/:something", async (req, res) => {
+app.get("/xxapi/minMaxUpiSell/:id/:amount/:something", async (req2, res) => {
   return res.json({ code: 0, msg: "success", data: {} });
 });
-app.get("/xxapi/buyUsdt/list", async (req, res) => {
-  req.query.currency = "usdt";
-  return getRechargeHistory(req, res);
+app.get("/xxapi/buyUsdt/list", async (req2, res) => {
+  req2.query.currency = "usdt";
+  return getRechargeHistory(req2, res);
 });
-app.post("/xxapi/buyUsdt/list", async (req, res) => {
-  req.query.currency = "usdt";
-  return getRechargeHistory(req, res);
+app.post("/xxapi/buyUsdt/list", async (req2, res) => {
+  req2.query.currency = "usdt";
+  return getRechargeHistory(req2, res);
 });
-app.post("/xxapi/wallet/sendVerifySms/:id/:other", async (req, res) => {
+app.post("/xxapi/wallet/sendVerifySms/:id/:other", async (req2, res) => {
   return res.json({ code: 0, msg: "success" });
 });
-app.get("/xxapi/bank/history", async (req, res) => {
-  const user = await getUserByToken(req);
+app.get("/xxapi/bank/history", async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });
   const txs = await Transaction.find({ userId: user._id, type: "sell" }).sort({ ctime: -1 });
-  const page = Number(req.query.page) || 1;
-  const limit = Number(req.query.limit) || 10;
+  const page = Number(req2.query.page) || 1;
+  const limit = Number(req2.query.limit) || 10;
   const start = (page - 1) * limit;
   const list = txs.slice(start, start + limit);
   const mappedList = list.map((tx) => {
@@ -4260,10 +4260,10 @@ app.get("/xxapi/bank/history", async (req, res) => {
     }
   });
 });
-app.get("/xxapi/TgBindUserservice", async (req, res) => {
+app.get("/xxapi/TgBindUserservice", async (req2, res) => {
   return res.json({ code: 0, msg: "success", data: [] });
 });
-app.get("/xxapi/checkTgBindStatus", async (req, res) => {
+app.get("/xxapi/checkTgBindStatus", async (req2, res) => {
   return res.json({ code: 0, msg: "success", data: { bound: false } });
 });
 function buildPaymentUrls(amount, payeeUpi, payeeName, ctType) {
@@ -4320,9 +4320,9 @@ function buildPaymentUrls(amount, payeeUpi, payeeName, ctType) {
     pay_url: primaryUrl
   };
 }
-app.get("/xxapi/buyitoken/waitconfirm", async (req, res) => {
+app.get("/xxapi/buyitoken/waitconfirm", async (req2, res) => {
   try {
-    const user = await getUserByToken(req).catch(() => null);
+    const user = await getUserByToken(req2).catch(() => null);
     if (!user) {
       return res.json({ code: 0, msg: "success", data: { waitconfirm: [] } });
     }
@@ -4386,22 +4386,22 @@ app.get("/xxapi/buyitoken/waitconfirm", async (req, res) => {
     return res.json({ code: 0, msg: "success", data: { waitconfirm: [] } });
   }
 });
-app.get("/xxapi/buyitoken/history", async (req, res) => {
-  return getRechargeHistory(req, res);
+app.get("/xxapi/buyitoken/history", async (req2, res) => {
+  return getRechargeHistory(req2, res);
 });
-app.post("/xxapi/buyitoken/history", async (req, res) => {
-  return getRechargeHistory(req, res);
+app.post("/xxapi/buyitoken/history", async (req2, res) => {
+  return getRechargeHistory(req2, res);
 });
-app.get("/xxapi/buyitoken/waitpayerpaymentslip", async (req, res) => {
-  const currentUser = await getUserByToken(req).catch(() => null);
+app.get("/xxapi/buyitoken/waitpayerpaymentslip", async (req2, res) => {
+  const currentUser = await getUserByToken(req2).catch(() => null);
   const userPhone = currentUser ? currentUser.phone : "";
   const userIdStr = currentUser ? currentUser._id ? currentUser._id.toString() : "" : "";
   try {
-    const reqMethod = req.query.method !== void 0 && req.query.method !== "" ? Number(req.query.method) : 1;
-    const reqCtType = req.query.ctType !== void 0 && req.query.ctType !== "" ? Number(req.query.ctType) : req.query.ct_type !== void 0 && req.query.ct_type !== "" ? Number(req.query.ct_type) : void 0;
-    const minAmt = req.query.min_amount !== void 0 && req.query.min_amount !== "" ? Number(req.query.min_amount) : void 0;
-    const maxAmt = req.query.max_amount !== void 0 && req.query.max_amount !== "" ? Number(req.query.max_amount) : void 0;
-    const reqAmtParam = req.query.amount !== void 0 && req.query.amount !== "" ? Number(req.query.amount) : void 0;
+    const reqMethod = req2.query.method !== void 0 && req2.query.method !== "" ? Number(req2.query.method) : 1;
+    const reqCtType = req2.query.ctType !== void 0 && req2.query.ctType !== "" ? Number(req2.query.ctType) : req2.query.ct_type !== void 0 && req2.query.ct_type !== "" ? Number(req2.query.ct_type) : void 0;
+    const minAmt = req2.query.min_amount !== void 0 && req2.query.min_amount !== "" ? Number(req2.query.min_amount) : void 0;
+    const maxAmt = req2.query.max_amount !== void 0 && req2.query.max_amount !== "" ? Number(req2.query.max_amount) : void 0;
+    const reqAmtParam = req2.query.amount !== void 0 && req2.query.amount !== "" ? Number(req2.query.amount) : void 0;
     const nowMs = Date.now();
     const list = [];
     const [candidateAdminNodes, sellingUsers, allPendingTxs, sellerDelays] = await Promise.all([
@@ -4586,7 +4586,7 @@ app.get("/xxapi/buyitoken/waitpayerpaymentslip", async (req, res) => {
         return amt >= lower && amt <= upper;
       });
     }
-    const ifAsc = req.query.if_asc !== void 0 ? req.query.if_asc === "true" || req.query.if_asc === "1" || req.query.if_asc === true : true;
+    const ifAsc = req2.query.if_asc !== void 0 ? req2.query.if_asc === "true" || req2.query.if_asc === "1" || req2.query.if_asc === true : true;
     if (ifAsc) {
       filteredList.sort((a, b) => Number(a.amount) - Number(b.amount));
     } else {
@@ -4611,9 +4611,9 @@ app.get("/xxapi/buyitoken/waitpayerpaymentslip", async (req, res) => {
         buyerLastSellerMap.set(userIdStr, selectedItem.sellerId);
       }
     }
-    const isFetchAll = req.query.all === "1" || req.query.all === "true" || req.query.fetchAll === "true";
-    const page = Number(req.query.page || req.query.pageNum || req.query.page_num || req.query.current || 1);
-    const limit = isFetchAll ? filteredList.length : Number(req.query.limit || req.query.pageSize || req.query.page_size || req.query.size || 10);
+    const isFetchAll = req2.query.all === "1" || req2.query.all === "true" || req2.query.fetchAll === "true";
+    const page = Number(req2.query.page || req2.query.pageNum || req2.query.page_num || req2.query.current || 1);
+    const limit = isFetchAll ? filteredList.length : Number(req2.query.limit || req2.query.pageSize || req2.query.page_size || req2.query.size || 10);
     const startIndex = (page - 1) * limit;
     const paginatedList = isFetchAll ? filteredList : filteredList.slice(startIndex, startIndex + limit);
     return res.json({
@@ -4640,9 +4640,9 @@ app.get("/xxapi/buyitoken/waitpayerpaymentslip", async (req, res) => {
     });
   }
 });
-app.get("/xxapi/buyitoken/paymentslipdetail", async (req, res) => {
-  const id = String(req.query.id || req.query.order_id || req.query.orderid || req.query.rptNo || req.query.rpt_no || "");
-  const reqAmt = req.query.amount ? Number(req.query.amount) : 0;
+app.get("/xxapi/buyitoken/paymentslipdetail", async (req2, res) => {
+  const id = String(req2.query.id || req2.query.order_id || req2.query.orderid || req2.query.rptNo || req2.query.rpt_no || "");
+  const reqAmt = req2.query.amount ? Number(req2.query.amount) : 0;
   let tx = await Transaction.findOne({ rptNo: id });
   const slipData = orderSlipMap.get(id);
   let amount = reqAmt > 0 ? reqAmt : 100;
@@ -4762,7 +4762,7 @@ app.get("/xxapi/buyitoken/paymentslipdetail", async (req, res) => {
     selectedPayerUpi = slipData.ct_account || slipData.payer_upi || "";
     selectedPayerTool = slipData.payer_tool || "";
   }
-  const currentUser = await getUserByToken(req).catch(() => null);
+  const currentUser = await getUserByToken(req2).catch(() => null);
   const userObj = currentUser || (tx && tx.userId ? await User.findById(tx.userId).catch(() => null) : null);
   if (!selectedPayerUpi && userObj) {
     const txCtId = tx ? tx.ct_id : slipData ? slipData.ctId : null;
@@ -4804,7 +4804,7 @@ app.get("/xxapi/buyitoken/paymentslipdetail", async (req, res) => {
     selectedPayerTool = mapCtTypeToName(ctTypeVal);
   }
   if (!tx && id) {
-    const user = await getUserByToken(req).catch(() => null);
+    const user = await getUserByToken(req2).catch(() => null);
     const existingTxCheck = await Transaction.findOne({ rptNo: id, payer_status: { $nin: [4, 5] } });
     if (existingTxCheck) {
       const existingBuyerId = existingTxCheck.buyerUserId ? String(existingTxCheck.buyerUserId) : existingTxCheck.userId ? String(existingTxCheck.userId) : "";
@@ -5012,10 +5012,10 @@ app.get("/xxapi/buyitoken/paymentslipdetail", async (req, res) => {
     }
   });
 });
-app.post("/xxapi/buyitoken/pickuppaymentslip", async (req, res) => {
-  const user = await getUserByToken(req);
+app.post("/xxapi/buyitoken/pickuppaymentslip", async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });
-  const { order_id, ct_id, ctType, ct_type, confirm_mode } = req.body;
+  const { order_id, ct_id, ctType, ct_type, confirm_mode } = req2.body;
   if (!order_id) {
     return res.json({ code: 400, msg: "Missing order_id" });
   }
@@ -5039,7 +5039,7 @@ app.post("/xxapi/buyitoken/pickuppaymentslip", async (req, res) => {
   if (slipData && !slipData.ctime) {
     slipData.ctime = ctime;
   }
-  let amount = slipData ? slipData.amount : req.body.amount ? Number(req.body.amount) : 0;
+  let amount = slipData ? slipData.amount : req2.body.amount ? Number(req2.body.amount) : 0;
   if (amount < 1) {
     return res.json({ code: 400, msg: "Invalid order amount. Amount must be at least \u20B91." });
   }
@@ -5133,7 +5133,7 @@ app.post("/xxapi/buyitoken/pickuppaymentslip", async (req, res) => {
   if (parsedCtType === 3) parsedCtType = 2;
   if (parsedCtType === 33) parsedCtType = -10;
   let chosenCtType = !parsedCtType || parsedCtType === 7 ? 1 : parsedCtType;
-  const bodyUpi = req.body.upi || req.body.ct_account || req.body.account;
+  const bodyUpi = req2.body.upi || req2.body.ct_account || req2.body.account;
   let selectedUpi = "";
   if (bodyUpi && String(bodyUpi).includes("@")) {
     selectedUpi = String(bodyUpi).trim();
@@ -5436,10 +5436,10 @@ app.post("/xxapi/buyitoken/pickuppaymentslip", async (req, res) => {
     }
   });
 });
-app.post("/xxapi/buyitoken/changecttype", async (req, res) => {
-  const user = await getUserByToken(req);
+app.post("/xxapi/buyitoken/changecttype", async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });
-  const { order_id, ct_id, ctType, ct_type } = req.body;
+  const { order_id, ct_id, ctType, ct_type } = req2.body;
   let chosenType = Number(ctType || ct_type || ct_id || 1);
   if (chosenType === 9) chosenType = 8;
   if (chosenType === 3) chosenType = 2;
@@ -5533,10 +5533,10 @@ app.post("/xxapi/buyitoken/changecttype", async (req, res) => {
     }
   });
 });
-app.post("/xxapi/buyitoken/processpaymentslips", async (req, res) => {
-  const user = await getUserByToken(req);
+app.post("/xxapi/buyitoken/processpaymentslips", async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });
-  const { order_id, process: processType, cancel_remark, proof_payment } = req.body;
+  const { order_id, process: processType, cancel_remark, proof_payment } = req2.body;
   const tx = await Transaction.findOne({ rptNo: order_id });
   if (tx) {
     const sellerSellRptNo = `SELL_${order_id}`;
@@ -5546,7 +5546,7 @@ app.post("/xxapi/buyitoken/processpaymentslips", async (req, res) => {
       const nowSec = Math.floor(Date.now() / 1e3);
       tx.dealTime = nowSec;
       tx.utime = nowSec;
-      if (req.body && req.body.utr) tx.utr = String(req.body.utr).trim();
+      if (req2.body && req2.body.utr) tx.utr = String(req2.body.utr).trim();
       if (proof_payment) tx.paymentProof = proof_payment;
       await tx.save();
       if (sellerTx) {
@@ -5581,13 +5581,13 @@ app.post("/xxapi/buyitoken/processpaymentslips", async (req, res) => {
     data: {}
   });
 });
-app.post("/xxapi/buyitoken/uploadPaymentProof/*", async (req, res) => {
+app.post("/xxapi/buyitoken/uploadPaymentProof/*", async (req2, res) => {
   return res.json({ code: 0, msg: "success", data: {} });
 });
-app.post("/xxapi/buyitoken/induspay/pay", async (req, res) => {
+app.post("/xxapi/buyitoken/induspay/pay", async (req2, res) => {
   return res.json({ code: 0, msg: "success", data: { payUrl: "" } });
 });
-app.get("/xxapi/returnToRpt/init", async (req, res) => {
+app.get("/xxapi/returnToRpt/init", async (req2, res) => {
   return res.json({
     code: 0,
     msg: "success",
@@ -5602,9 +5602,9 @@ app.get("/xxapi/returnToRpt/init", async (req, res) => {
     }
   });
 });
-app.get("/xxapi/inviteFriends/init", async (req, res) => {
+app.get("/xxapi/inviteFriends/init", async (req2, res) => {
   try {
-    const user = await getUserByToken(req);
+    const user = await getUserByToken(req2);
     if (!user) return res.json({ code: 403, msg: "Unauthorized" });
     const inviteCode = user.ownInviteCode || user.referralCode || user.referral_code || user.providerId || "";
     const userProviderId = user.providerId || "";
@@ -5686,9 +5686,9 @@ app.get("/xxapi/inviteFriends/init", async (req, res) => {
     return res.json({ code: 500, msg: e.message });
   }
 });
-app.post("/xxapi/inviteFriends/reward", async (req, res) => {
+app.post("/xxapi/inviteFriends/reward", async (req2, res) => {
   try {
-    const user = await getUserByToken(req);
+    const user = await getUserByToken(req2);
     if (!user) return res.json({ code: 403, msg: "Unauthorized" });
     const inviteCode = user.ownInviteCode || user.referralCode || user.referral_code || user.providerId || "";
     const userProviderId = user.providerId || "";
@@ -5771,7 +5771,7 @@ app.post("/xxapi/inviteFriends/reward", async (req, res) => {
     return res.json({ code: 500, msg: e.message });
   }
 });
-app.get("/xxapi/oldRptNew/init", async (req, res) => {
+app.get("/xxapi/oldRptNew/init", async (req2, res) => {
   return res.json({
     code: 0,
     msg: "success",
@@ -5789,14 +5789,14 @@ app.get("/xxapi/oldRptNew/init", async (req, res) => {
     }
   });
 });
-app.all(["/xxapi/deviceInfo", "/xxapi/referral*", "/xxapi/team/edit/ratio", "/xxapi/transfertochilder", "/xxapi/linkKyc", "/xxapi/bscAddress", "/xxapi/buyUsdt/binanceWithdrawalQuote", "/xxapi/uploadimage*", "/xxapi/mark-as-read*", "/xxapi/mark-all-as-read", "/xxapi/cw_inviterank", "/xxapi/cw_profitrank", "/xxapi/cwkyc", "/xxapi/inviteFriends/*", "/xxapi/returnToRpt/*", "/xxapi/buyInrActivity/*", "/xxapi/subBuyReward/*", "/xxapi/sevenDayCharge/*"], async (req, res) => {
+app.all(["/xxapi/deviceInfo", "/xxapi/referral*", "/xxapi/team/edit/ratio", "/xxapi/transfertochilder", "/xxapi/linkKyc", "/xxapi/bscAddress", "/xxapi/buyUsdt/binanceWithdrawalQuote", "/xxapi/uploadimage*", "/xxapi/mark-as-read*", "/xxapi/mark-all-as-read", "/xxapi/cw_inviterank", "/xxapi/cw_profitrank", "/xxapi/cwkyc", "/xxapi/inviteFriends/*", "/xxapi/returnToRpt/*", "/xxapi/buyInrActivity/*", "/xxapi/subBuyReward/*", "/xxapi/sevenDayCharge/*"], async (req2, res) => {
   return res.json({ code: 0, msg: "success", data: {} });
 });
-app.post(["/xxapi/uploadPaymentProof", "/xxapi/uploadPaymentProof/*"], async (req, res) => {
+app.post(["/xxapi/uploadPaymentProof", "/xxapi/uploadPaymentProof/*"], async (req2, res) => {
   try {
-    let fileToUpload = req.body?.imagedata || req.body?.image || req.body?.file || req.body?.proofImage;
-    if (!fileToUpload && req.files && req.files.length > 0) {
-      fileToUpload = req.files[0].buffer;
+    let fileToUpload = req2.body?.imagedata || req2.body?.image || req2.body?.file || req2.body?.proofImage;
+    if (!fileToUpload && req2.files && req2.files.length > 0) {
+      fileToUpload = req2.files[0].buffer;
     }
     if (!fileToUpload) {
       return res.json({ code: 400, msg: "No image file provided" });
@@ -5813,22 +5813,22 @@ app.post(["/xxapi/uploadPaymentProof", "/xxapi/uploadPaymentProof/*"], async (re
     return res.json({ code: 500, msg: err.message || "Failed to upload image" });
   }
 });
-app.all(["/xxapi/buyUsdt/notify", "/xxapi/buyTrx/notify", "/xxapi/buyUsdt/submit"], async (req, res) => {
+app.all(["/xxapi/buyUsdt/notify", "/xxapi/buyTrx/notify", "/xxapi/buyUsdt/submit"], async (req2, res) => {
   try {
     await connectToDatabase();
-    const user = await getUserByToken(req).catch(() => null);
+    const user = await getUserByToken(req2).catch(() => null);
     if (!user) {
       return res.json({ code: 401, msg: "Unauthorized. Please login again." });
     }
-    const body = req.body || {};
-    const query = req.query || {};
+    const body = req2.body || {};
+    const query = req2.query || {};
     let explicitUsdt = Number(body.targetAmount || query.targetAmount || body.usdtAmount || query.usdtAmount || 0);
     let inputAmt = Number(body.amount || query.amount || body.principal || query.principal || 0);
     const networkVal = String(body.network || query.network || "TRC20").toUpperCase();
     const utrVal = String(body.utr || query.utr || body.address || query.address || body.txHash || query.txHash || "");
     let proofImage = String(body.proofImage || body.proof || body.imagedata || query.proofImage || query.proof || "").trim();
-    if (!proofImage && req.files && req.files.length > 0) {
-      const file = req.files[0];
+    if (!proofImage && req2.files && req2.files.length > 0) {
+      const file = req2.files[0];
       proofImage = file.buffer;
     }
     if (!proofImage) {
@@ -5895,10 +5895,10 @@ app.all(["/xxapi/buyUsdt/notify", "/xxapi/buyTrx/notify", "/xxapi/buyUsdt/submit
     return res.json({ code: 500, msg: "Internal server error submitting deposit: " + (err?.message || err) });
   }
 });
-app.post(["/xxapi/linkUpi/sendSms", "/xxapi/linkUpi/sendOtp"], async (req, res) => {
-  const user = await getUserByToken(req);
+app.post(["/xxapi/linkUpi/sendSms", "/xxapi/linkUpi/sendOtp"], async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });
-  const phone = req.body?.phone || req.query?.phone || req.body?.upi || req.body?.account || user.phone;
+  const phone = req2.body?.phone || req2.query?.phone || req2.body?.upi || req2.body?.account || user.phone;
   const isUsed = await isUpiUsedInAnotherAccount(phone, user._id);
   if (isUsed) {
     console.log(`[UPI Link Blocked] Phone/UPI ${phone} is already linked to another account.`);
@@ -5907,11 +5907,11 @@ app.post(["/xxapi/linkUpi/sendSms", "/xxapi/linkUpi/sendOtp"], async (req, res) 
   const otpRes = await callExternalGetOtp(phone);
   return res.json({ code: 0, msg: "OTP sent successfully", data: otpRes });
 });
-app.post(["/xxapi/linkUpi/verifySms", "/xxapi/linkUpi/verify", "/xxapi/authupi"], async (req, res) => {
-  const user = await getUserByToken(req);
+app.post(["/xxapi/linkUpi/verifySms", "/xxapi/linkUpi/verify", "/xxapi/authupi"], async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });
-  const { ctid, ct_id, upi, phone, smscode, otp, account, pnname } = req.body || {};
-  const inputOtp = smscode || otp || req.body?.code;
+  const { ctid, ct_id, upi, phone, smscode, otp, account, pnname } = req2.body || {};
+  const inputOtp = smscode || otp || req2.body?.code;
   const targetPhone = phone || account || user.phone;
   const targetUpi = upi || (targetPhone.includes("@") ? targetPhone : "Pending verification");
   const isUsed = await isUpiUsedInAnotherAccount(targetUpi !== "Pending verification" ? targetUpi : targetPhone, user._id);
@@ -5963,7 +5963,7 @@ app.post(["/xxapi/linkUpi/verifySms", "/xxapi/linkUpi/verify", "/xxapi/authupi"]
   console.log(`[UPI Link/Auth] Verified and activated UPI tool for ${user.phone}: ${targetUpi}`);
   return res.json({ code: 0, msg: "UPI linked and verified successfully", data: tool });
 });
-app.get("/xxapi/buyitoken/check", async (req, res) => {
+app.get("/xxapi/buyitoken/check", async (req2, res) => {
   return res.json({
     code: 0,
     msg: "success",
@@ -5974,7 +5974,7 @@ app.get("/xxapi/buyitoken/check", async (req, res) => {
     }
   });
 });
-app.get("/xxapi/customerservice", async (req, res) => {
+app.get("/xxapi/customerservice", async (req2, res) => {
   const telegramSupportUrl = "https://t.me/+4F3O2KrkP98yZjk1";
   return res.json({
     code: 0,
@@ -6001,7 +6001,7 @@ app.get("/xxapi/customerservice", async (req, res) => {
     ]
   });
 });
-app.get("/xxapi/addAgentGroup/:id", async (req, res) => {
+app.get("/xxapi/addAgentGroup/:id", async (req2, res) => {
   return res.json({
     code: 0,
     msg: "success",
@@ -6272,9 +6272,9 @@ async function healAndGetCleanTools(user) {
   }
   return cleanTools;
 }
-app.get("/xxapi/collectiontoollist", async (req, res) => {
+app.get("/xxapi/collectiontoollist", async (req2, res) => {
   try {
-    const user = await getUserByToken(req);
+    const user = await getUserByToken(req2);
     if (!user) return res.json({ code: 403, msg: "Unauthorized" });
     const cleanTools = await healAndGetCleanTools(user);
     return res.json({ code: 0, msg: "success", data: cleanTools });
@@ -6283,10 +6283,10 @@ app.get("/xxapi/collectiontoollist", async (req, res) => {
     return res.json({ code: 0, msg: "success", data: [] });
   }
 });
-app.get("/xxapi/collectiontool", async (req, res) => {
-  const user = await getUserByToken(req);
+app.get("/xxapi/collectiontool", async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });
-  const { id } = req.query;
+  const { id } = req2.query;
   const toolId = String(id || "");
   let reqTypeNum = 0;
   if (toolId.includes("paytm") || toolId === "8" || toolId === "9" || toolId === "16") reqTypeNum = 8;
@@ -6367,10 +6367,10 @@ app.get("/xxapi/collectiontool", async (req, res) => {
   };
   return res.json({ code: 0, msg: "success", data: synthesized });
 });
-app.post("/xxapi/collectiontool", async (req, res) => {
-  const user = await getUserByToken(req);
+app.post("/xxapi/collectiontool", async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });
-  const { id, upi, account, password, pnname } = req.body;
+  const { id, upi, account, password, pnname } = req2.body;
   if (!user.collectionTools) {
     user.collectionTools = [];
   }
@@ -6381,7 +6381,7 @@ app.post("/xxapi/collectiontool", async (req, res) => {
   if (!tool) {
     tool = {
       id: id || `tool-${Date.now()}`,
-      type: req.body.type || req.body.ctType || 1,
+      type: req2.body.type || req2.body.ctType || 1,
       upi: upi || "Pending verification",
       state: 2,
       status: 1,
@@ -6452,10 +6452,10 @@ app.post("/xxapi/collectiontool", async (req, res) => {
     return res.json({ code: 0, msg: "success" });
   }
 });
-app.post(["/xxapi/selectUpi", "/xxapi/collectiontool/selectUpi", "/xxapi/collectiontool/select"], async (req, res) => {
-  const user = await getUserByToken(req);
+app.post(["/xxapi/selectUpi", "/xxapi/collectiontool/selectUpi", "/xxapi/collectiontool/select"], async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });
-  const { id, ct_id, ctid, upi, upi_id, selectedUpi } = req.body || {};
+  const { id, ct_id, ctid, upi, upi_id, selectedUpi } = req2.body || {};
   const targetToolId = id || ct_id || ctid;
   const targetUpi = String(upi || upi_id || selectedUpi || "").trim();
   if (!targetUpi || !targetUpi.includes("@")) {
@@ -6569,15 +6569,16 @@ function getOrCreateUserTool(user, toolId) {
     const num = Number(toolId);
     if (!isNaN(num) && num !== 0) typeVal = num;
   }
+  const targetAccount = String(req.body?.account || req.body?.phone || req.query?.account || "").trim();
   tool = user.collectionTools.find((t) => {
     const tType = Number(t.ctType || t.type || t.ct_type);
-    return tType === typeVal || typeVal === 8 && tType === 9 || typeVal === 2 && tType === 3;
+    const sameType = tType === typeVal || typeVal === 8 && tType === 9 || typeVal === 2 && tType === 3;
+    const sameAccount = !targetAccount || !t.account || String(t.account).trim() === targetAccount;
+    return sameType && sameAccount;
   });
   if (!tool) {
     const newToolId = String(toolId || `tool-${typeVal}-${Date.now()}`);
     const defaultName = mapCtTypeToName(typeVal);
-    const existingUpi = user.upiDetails && user.upiDetails.upi ? user.upiDetails.upi : "";
-    const hasUpi = existingUpi && existingUpi.includes("@") && existingUpi !== "Pending verification";
     tool = {
       id: newToolId,
       _id: newToolId,
@@ -6587,10 +6588,12 @@ function getOrCreateUserTool(user, toolId) {
       pnname: defaultName,
       text: defaultName,
       name: defaultName,
-      account: user.phone || "",
-      upi: hasUpi ? existingUpi : "Pending verification",
-      state: hasUpi ? 2 : 5,
-      status: hasUpi ? 1 : 0,
+      account: targetAccount || user.phone || "",
+      upi: "Pending verification",
+      backup_upi: [],
+      state: 7,
+      // 7 = waiting_authupi (Requires OTP verification for new phone number)
+      status: 0,
       inSell: 0
     };
     user.collectionTools.push(tool);
@@ -6598,15 +6601,15 @@ function getOrCreateUserTool(user, toolId) {
   }
   return tool;
 }
-app.post("/xxapi/collectiontoolStatus", async (req, res) => {
-  const user = await getUserByToken(req);
+app.post("/xxapi/collectiontoolStatus", async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });
-  const toolId = req.body?.ct_id || req.body?.id || req.body?.ctId || req.body?.ct_type || req.body?.ctType || req.body?.type || req.query?.ct_id || req.query?.id;
-  const { inSell, state, status } = req.body;
+  const toolId = req2.body?.ct_id || req2.body?.id || req2.body?.ctId || req2.body?.ct_type || req2.body?.ctType || req2.body?.type || req2.query?.ct_id || req2.query?.id;
+  const { inSell, state, status } = req2.body;
   const tool = getOrCreateUserTool(user, toolId);
   const statusNum = status !== void 0 ? Number(status) : void 0;
   const stateNum = state !== void 0 ? Number(state) : void 0;
-  const isRelinkRequested = statusNum === 5 || stateNum === 5 || statusNum === 7 || stateNum === 7 || req.body.needRelink === "1" || req.body.mode === "relink";
+  const isRelinkRequested = statusNum === 5 || stateNum === 5 || statusNum === 7 || stateNum === 7 || req2.body.needRelink === "1" || req2.body.mode === "relink";
   if (isRelinkRequested) {
     if (tool) {
       if (tool.upi && tool.upi.includes("@") && tool.upi !== "Pending verification") {
@@ -6670,10 +6673,10 @@ app.post("/xxapi/collectiontoolStatus", async (req, res) => {
   await user.save();
   return res.json({ code: 0, msg: "success" });
 });
-app.post("/xxapi/collectiontool/startsell", async (req, res) => {
-  const user = await getUserByToken(req);
+app.post("/xxapi/collectiontool/startsell", async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });
-  const toolId = req.body?.ct_id || req.body?.id || req.body?.ctId || req.body?.ct_type || req.body?.ctType || req.body?.type || req.query?.ct_id || req.query?.id;
+  const toolId = req2.body?.ct_id || req2.body?.id || req2.body?.ctId || req2.body?.ct_type || req2.body?.ctType || req2.body?.type || req2.query?.ct_id || req2.query?.id;
   const tool = getOrCreateUserTool(user, toolId);
   const activeReviewOrders = await Transaction.find({
     $or: [
@@ -6731,10 +6734,10 @@ app.post("/xxapi/collectiontool/startsell", async (req, res) => {
   await user.save();
   return res.json({ code: 0, msg: "start sell successfully" });
 });
-app.post("/xxapi/collectiontool/stopsell", async (req, res) => {
-  const user = await getUserByToken(req);
+app.post("/xxapi/collectiontool/stopsell", async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });
-  const toolId = req.body?.ct_id || req.body?.id || req.body?.ctId || req.body?.ct_type || req.body?.ctType || req.body?.type || req.query?.ct_id || req.query?.id;
+  const toolId = req2.body?.ct_id || req2.body?.id || req2.body?.ctId || req2.body?.ct_type || req2.body?.ctType || req2.body?.type || req2.query?.ct_id || req2.query?.id;
   const tool = getOrCreateUserTool(user, toolId);
   tool.inSell = 0;
   tool.in_sell = 0;
@@ -6773,8 +6776,8 @@ app.post("/xxapi/collectiontool/stopsell", async (req, res) => {
   await user.save();
   return res.json({ code: 0, msg: "stop sell successfully" });
 });
-app.get("/xxapi/availablect", async (req, res) => {
-  const user = await getUserByToken(req);
+app.get("/xxapi/availablect", async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 0, msg: "success", data: [] });
   const cleanTools = await healAndGetCleanTools(user);
   let tools = (cleanTools || []).map((t) => {
@@ -6791,8 +6794,8 @@ app.get("/xxapi/availablect", async (req, res) => {
       ct_type: resolvedType
     };
   });
-  const referer = (req.headers.referer || "").toLowerCase();
-  const isBuyRequest = req.query.for === "buy" || req.query.purpose === "buy" || req.query.type === "buy" || referer.includes("/buy") || referer.includes("/buyinr") || referer.includes("buyitoken");
+  const referer = (req2.headers.referer || "").toLowerCase();
+  const isBuyRequest = req2.query.for === "buy" || req2.query.purpose === "buy" || req2.query.type === "buy" || referer.includes("/buy") || referer.includes("/buyinr") || referer.includes("buyitoken");
   if (isBuyRequest) {
     tools = tools.filter((t) => {
       const typeNum = Number(t.ctType || t.ct_type || t.type);
@@ -6805,14 +6808,14 @@ app.get("/xxapi/availablect", async (req, res) => {
   }
   return res.json({ code: 0, msg: "success", data: tools });
 });
-app.post("/xxapi/monitorflow/one", async (req, res) => {
-  const user = await getUserByToken(req);
+app.post("/xxapi/monitorflow/one", async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });
-  const rawCtType = req.body.ct_type || req.body.ctType || req.body.type || req.body.kycid || req.body.id || req.body.ct_id || "";
+  const rawCtType = req2.body.ct_type || req2.body.ctType || req2.body.type || req2.body.kycid || req2.body.id || req2.body.ct_id || "";
   const normCtType = getNormalizedCtType(rawCtType);
   const typeNum = isNaN(Number(rawCtType)) ? normCtType : Number(rawCtType);
-  const account = req.body.account || req.body.phone || req.body.upiNo || req.body.mobile || user.phone || "";
-  const { pnname, ct_id, pin, deviceId } = req.body;
+  const account = req2.body.account || req2.body.phone || req2.body.upiNo || req2.body.mobile || user.phone || "";
+  const { pnname, ct_id, pin, deviceId } = req2.body;
   if (!user.collectionTools) {
     user.collectionTools = [];
   }
@@ -6869,7 +6872,7 @@ app.post("/xxapi/monitorflow/one", async (req, res) => {
     user.zoopayPhone = targetPhone;
     user.zoopayUpis = [];
     const isExplicitRelink = Boolean(
-      ct_id && user.collectionTools && user.collectionTools.some((t) => t && (t.id === ct_id || t._id === ct_id)) || req.body.needRelink === "1" || req.body.needRelink === "true" || req.query?.needRelink === "1"
+      ct_id && user.collectionTools && user.collectionTools.some((t) => t && (t.id === ct_id || t._id === ct_id)) || req2.body.needRelink === "1" || req2.body.needRelink === "true" || req2.query?.needRelink === "1"
     );
     const samePhoneLinkedTool = user.collectionTools ? user.collectionTools.find(
       (t) => t && (t.type === typeNum || t.ctType === normCtType || t.ct_type === normCtType) && (targetPhone && String(t.account || t.phone || t.linkedPhone).trim() === targetPhone) && t.upi && t.upi !== "Pending verification" && t.state !== 7
@@ -6891,7 +6894,7 @@ app.post("/xxapi/monitorflow/one", async (req, res) => {
       if (existingTool.upi && existingTool.upi !== "Pending verification") {
         isRelinkRequired = true;
       }
-      if (req.body.needRelink === "1" || req.body.needRelink === "true" || req.query?.needRelink === "1") {
+      if (req2.body.needRelink === "1" || req2.body.needRelink === "true" || req2.query?.needRelink === "1") {
         isRelinkRequired = true;
       }
       if (!existingTool.savedOriginalState) {
@@ -6938,14 +6941,14 @@ app.post("/xxapi/monitorflow/one", async (req, res) => {
     return res.json({ code: 500, msg: err.message || "Internal Server Error" });
   }
 });
-app.post("/xxapi/monitorflow/two", (req, res) => {
-  const { pk } = req.body;
+app.post("/xxapi/monitorflow/two", (req2, res) => {
+  const { pk } = req2.body;
   res.json({ code: 0, msg: "success", data: pk || {} });
 });
-app.post("/xxapi/monitorflow/two/getpreloginresult", (req, res) => {
+app.post("/xxapi/monitorflow/two/getpreloginresult", (req2, res) => {
   res.json({ code: 0, msg: "success", data: {} });
 });
-app.post("/xxapi/monitorflow/two/getpreloginresult2", (req, res) => {
+app.post("/xxapi/monitorflow/two/getpreloginresult2", (req2, res) => {
   res.json({ code: 0, msg: "success", data: {} });
 });
 function parseAutomationHistoryResponse(json) {
@@ -7461,10 +7464,10 @@ async function runAutonomousBackgroundWorker() {
   }
 }
 setInterval(runAutonomousBackgroundWorker, 3e3);
-app.post("/xxapi/monitorflow/three", async (req, res) => {
-  const user = await getUserByToken(req);
+app.post("/xxapi/monitorflow/three", async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });
-  const { pk, ct_type, account, login_params } = req.body;
+  const { pk, ct_type, account, login_params } = req2.body;
   const typeNum = isNaN(Number(ct_type)) ? 16 : Number(ct_type);
   let tool = null;
   if (user.collectionTools) {
@@ -7748,15 +7751,15 @@ app.post("/xxapi/monitorflow/three", async (req, res) => {
     return res.json({ code: 500, msg: err.message || "Internal Server Error" });
   }
 });
-app.post("/xxapi/monitorflow/three2", (req, res) => {
+app.post("/xxapi/monitorflow/three2", (req2, res) => {
   res.json({ code: 0, msg: "success", data: {} });
 });
-app.post("/xxapi/monitorflow/four", (req, res) => {
+app.post("/xxapi/monitorflow/four", (req2, res) => {
   res.json({ code: 0, msg: "success", data: {} });
 });
-app.post("/api/run-automation", async (req, res) => {
+app.post("/api/run-automation", async (req2, res) => {
   try {
-    const { action, phone, channelType, engine, platform, sessionId, otp } = req.body;
+    const { action, phone, channelType, engine, platform, sessionId, otp } = req2.body;
     const config = getAutomationConfig(channelType || platform);
     const targetChannelType = channelType !== void 0 ? Number(channelType) : config.channelType;
     const targetEngine = engine || config.engine;
@@ -7800,10 +7803,10 @@ app.post("/api/run-automation", async (req, res) => {
     return res.status(200).json({ code: 200, status: "success", message: "OTP processed successfully", sessionId: `session-${Date.now()}` });
   }
 });
-app.post("/xxapi/monitorflow/check", async (req, res) => {
-  const user = await getUserByToken(req);
+app.post("/xxapi/monitorflow/check", async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });
-  const { ct_type, account, ct_id } = req.body;
+  const { ct_type, account, ct_id } = req2.body;
   const typeNum = isNaN(Number(ct_type)) ? 16 : Number(ct_type);
   let tool = null;
   if (user.collectionTools) {
@@ -7811,10 +7814,7 @@ app.post("/xxapi/monitorflow/check", async (req, res) => {
       tool = user.collectionTools.find((t) => t.id === ct_id);
     }
     if (!tool && account) {
-      tool = user.collectionTools.find((t) => t.account === account && (t.type === typeNum || t.ctType === typeNum || t.ct_type === typeNum));
-    }
-    if (!tool) {
-      tool = user.collectionTools.find((t) => t.type === typeNum || t.ctType === typeNum || t.ct_type === typeNum);
+      tool = user.collectionTools.find((t) => String(t.account).trim() === String(account).trim() && (t.type === typeNum || t.ctType === typeNum || t.ct_type === typeNum));
     }
   }
   const isPendingOtp = !tool || tool.state === 7 || tool.state === 5 || !tool.upi || tool.upi === "Pending verification" || !tool.backup_upi || tool.backup_upi.length === 0;
@@ -7843,10 +7843,10 @@ app.post("/xxapi/monitorflow/check", async (req, res) => {
     }
   });
 });
-app.post("/xxapi/monitorflow/upi/list", async (req, res) => {
-  const user = await getUserByToken(req);
+app.post("/xxapi/monitorflow/upi/list", async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });
-  const { ct_type, account, ct_id } = req.body;
+  const { ct_type, account, ct_id } = req2.body;
   const typeNum = isNaN(Number(ct_type)) ? 16 : Number(ct_type);
   let tool = null;
   if (user.collectionTools) {
@@ -7871,10 +7871,10 @@ app.post("/xxapi/monitorflow/upi/list", async (req, res) => {
     }
   });
 });
-app.all("/xxapi/rechargeConfirm", async (req, res) => {
-  const user = await getUserByToken(req);
+app.all("/xxapi/rechargeConfirm", async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });
-  const amount = Number(req.body.amount || req.query.amount || 1e3);
+  const amount = Number(req2.body.amount || req2.query.amount || 1e3);
   const rptNo = `RPT${Date.now()}`;
   const activeNode = await PaymentNode.findOne({ amount, status: true }) || await PaymentNode.findOne({ status: true });
   const txData = {
@@ -7907,8 +7907,8 @@ app.all("/xxapi/rechargeConfirm", async (req, res) => {
     data: rptNo
   });
 });
-app.get("/xxapi/rechargeToken", async (req, res) => {
-  const rptNo = req.query.rptNo || req.body.rptNo;
+app.get("/xxapi/rechargeToken", async (req2, res) => {
+  const rptNo = req2.query.rptNo || req2.body.rptNo;
   const tx = await Transaction.findOne({ rptNo });
   if (!tx) {
     return res.json({ code: 404, msg: "Transaction not found" });
@@ -7919,8 +7919,8 @@ app.get("/xxapi/rechargeToken", async (req, res) => {
     data: tx
   });
 });
-app.get("/xxapi/chargeUtr/:rptNo/:utr", async (req, res) => {
-  const { rptNo, utr } = req.params;
+app.get("/xxapi/chargeUtr/:rptNo/:utr", async (req2, res) => {
+  const { rptNo, utr } = req2.params;
   const tx = await Transaction.findOne({ rptNo });
   if (!tx) return res.json({ code: 404, msg: "Transaction not found" });
   tx.utr = utr;
@@ -7934,8 +7934,8 @@ app.get("/xxapi/chargeUtr/:rptNo/:utr", async (req, res) => {
     data: tx
   });
 });
-async function cancelTransactionHandler(req, res) {
-  const rptNo = req.params.rptNo || req.body?.rptNo || req.body?.order_id || req.body?.orderId || req.body?.id || req.query?.rptNo || req.query?.order_id || req.query?.id || req.body?.rpt_no || req.query?.rpt_no;
+async function cancelTransactionHandler(req2, res) {
+  const rptNo = req2.params.rptNo || req2.body?.rptNo || req2.body?.order_id || req2.body?.orderId || req2.body?.id || req2.query?.rptNo || req2.query?.order_id || req2.query?.id || req2.body?.rpt_no || req2.query?.rpt_no;
   if (rptNo) {
     const rptStr = String(rptNo).trim();
     const cleanRptStr = rptStr.replace(/^SELL_/i, "").trim();
@@ -7954,7 +7954,7 @@ async function cancelTransactionHandler(req, res) {
         buyerActiveOrderMap.delete(phone);
       }
     }
-    const user = await getUserByToken(req).catch(() => null);
+    const user = await getUserByToken(req2).catch(() => null);
     if (user && user.phone) {
       markOrderCancelledForUser(user.phone, rptStr);
       markOrderCancelledForUser(user.phone, cleanRptStr);
@@ -8074,11 +8074,11 @@ async function cancelTransactionHandler(req, res) {
   }
   return res.json({ code: 0, msg: "success" });
 }
-async function getRechargeHistory(req, res) {
-  const user = await getUserByToken(req);
+async function getRechargeHistory(req2, res) {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });
-  const currencyVal = String(req.query.currency || req.body?.currency || "").toLowerCase();
-  const statusVal = String(req.query.status || req.query.state || req.query.orderState || "");
+  const currencyVal = String(req2.query.currency || req2.body?.currency || "").toLowerCase();
+  const statusVal = String(req2.query.status || req2.query.state || req2.query.orderState || "");
   const isUsdtRequest = currencyVal === "1" || currencyVal === "usdt";
   const isCancelRequest = currencyVal === "inr_cancel" || currencyVal === "cancel" || currencyVal === "recharge_cancel" || currencyVal === "1" && statusVal === "4";
   const userPhones = [user.phone, user.mobileNo].filter(Boolean);
@@ -8161,8 +8161,8 @@ async function getRechargeHistory(req, res) {
       query.payer_status = { $in: [1, 2, 3] };
     }
   }
-  const page = Number(req.query.page) || Number(req.body?.page) || 1;
-  const limit = Number(req.query.limit) || Number(req.body?.limit) || 20;
+  const page = Number(req2.query.page) || Number(req2.body?.page) || 1;
+  const limit = Number(req2.query.limit) || Number(req2.body?.limit) || 20;
   const start = (page - 1) * limit;
   const [total, list] = await Promise.all([
     Transaction.countDocuments(query),
@@ -8358,8 +8358,8 @@ app.get("/xxapi/sell/cancel", cancelTransactionHandler);
 app.post("/xxapi/sell/cancel", cancelTransactionHandler);
 app.get("/xxapi/sellCancel", cancelTransactionHandler);
 app.post("/xxapi/sellCancel", cancelTransactionHandler);
-app.get("/xxapi/chargeStatus/:rptNo", async (req, res) => {
-  const { rptNo } = req.params;
+app.get("/xxapi/chargeStatus/:rptNo", async (req2, res) => {
+  const { rptNo } = req2.params;
   const tx = await Transaction.findOne({ rptNo });
   if (!tx) return res.json({ code: 404, msg: "Transaction not found" });
   if (tx.payer_status === 3 && !tx.isBalanceCredited) {
@@ -8367,18 +8367,18 @@ app.get("/xxapi/chargeStatus/:rptNo", async (req, res) => {
   }
   return res.json({ code: 0, msg: "success", data: tx.payer_status });
 });
-app.post(["/xxapi/buyitoken/confirmPayment", "/xxapi/confirmPayment"], async (req, res) => {
-  const user = await getUserByToken(req);
+app.post(["/xxapi/buyitoken/confirmPayment", "/xxapi/confirmPayment"], async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });
-  const rptNo = req.body.rptNo || req.body.order_id || req.body.orderId || req.query.rptNo;
+  const rptNo = req2.body.rptNo || req2.body.order_id || req2.body.orderId || req2.query.rptNo;
   if (!rptNo) return res.json({ code: 400, msg: "Missing order_id" });
   const tx = await Transaction.findOne({ rptNo });
   if (!tx) return res.json({ code: 404, msg: "Transaction not found" });
   if (tx.buyerUserId && user && tx.buyerUserId.toString() !== user._id.toString()) {
     return res.json({ code: 400, msg: "This order has already been selected by another user." });
   }
-  if (req.body.utr) {
-    tx.utr = String(req.body.utr).trim();
+  if (req2.body.utr) {
+    tx.utr = String(req2.body.utr).trim();
   }
   tx.payer_status = 2;
   tx.currentStep = 2;
@@ -8400,18 +8400,18 @@ app.post(["/xxapi/buyitoken/confirmPayment", "/xxapi/confirmPayment"], async (re
     utr: tx.utr || ""
   });
 });
-app.get("/xxapi/chargeToken/history", async (req, res) => {
-  return getRechargeHistory(req, res);
+app.get("/xxapi/chargeToken/history", async (req2, res) => {
+  return getRechargeHistory(req2, res);
 });
-app.post("/xxapi/chargeToken/history", async (req, res) => {
-  return getRechargeHistory(req, res);
+app.post("/xxapi/chargeToken/history", async (req2, res) => {
+  return getRechargeHistory(req2, res);
 });
-async function getTransferTokenHistory(req, res) {
+async function getTransferTokenHistory(req2, res) {
   try {
-    const user = await getUserByToken(req);
+    const user = await getUserByToken(req2);
     if (!user) return res.json({ code: 403, msg: "Unauthorized" });
-    const page = Number(req.query.page || req.body?.page) || 1;
-    const limit = Number(req.query.limit || req.body?.limit) || 10;
+    const page = Number(req2.query.page || req2.body?.page) || 1;
+    const limit = Number(req2.query.limit || req2.body?.limit) || 10;
     const query = {
       payer_status: 3,
       // success
@@ -8499,9 +8499,9 @@ app.get("/xxapi/transferToken/history", getTransferTokenHistory);
 app.post("/xxapi/transferToken/history", getTransferTokenHistory);
 app.get("/xxapi/transferTokenHistory", getTransferTokenHistory);
 app.post("/xxapi/transferTokenHistory", getTransferTokenHistory);
-async function getSellHistory(req, res) {
+async function getSellHistory(req2, res) {
   try {
-    const user = await getUserByToken(req);
+    const user = await getUserByToken(req2);
     if (!user) return res.json({ code: 403, msg: "Unauthorized" });
     const userIds = [user._id, user._id ? user._id.toString() : "", user.id, user.userId].filter(Boolean);
     const userObjIds = userIds.map((id) => {
@@ -8567,7 +8567,7 @@ async function getSellHistory(req, res) {
       sellerOrConditions.push({ payee_bank_account: { $in: upiRegexes } });
     }
     const queryFilter = { $or: sellerOrConditions };
-    const rawStatus = req.query.status ?? req.body?.status ?? req.query.state ?? req.body?.state ?? req.query.orderState ?? req.body?.orderState ?? req.query.order_state ?? req.body?.order_state ?? req.query.tab ?? req.body?.tab ?? "";
+    const rawStatus = req2.query.status ?? req2.body?.status ?? req2.query.state ?? req2.body?.state ?? req2.query.orderState ?? req2.body?.orderState ?? req2.query.order_state ?? req2.body?.order_state ?? req2.query.tab ?? req2.body?.tab ?? "";
     const statusStr = String(rawStatus).toLowerCase().trim();
     const allSellerTxs = await Transaction.find(queryFilter).sort({ ctime: -1, _id: -1 }).lean();
     const baseRpts = Array.from(new Set(allSellerTxs.map((tx) => String(tx.rptNo || "").replace(/^SELL_/i, "").trim()).filter(Boolean)));
@@ -8627,8 +8627,8 @@ async function getSellHistory(req, res) {
     } else if (statusStr === "4" || statusStr === "cancel" || statusStr === "cancelled") {
       deduplicatedTxs = deduplicatedTxs.filter((t) => t.payer_status === 4 || t.payer_status === 5);
     }
-    const page = Number(req.query.page) || Number(req.body?.page) || 1;
-    const limit = Number(req.query.limit) || Number(req.body?.limit) || 20;
+    const page = Number(req2.query.page) || Number(req2.body?.page) || 1;
+    const limit = Number(req2.query.limit) || Number(req2.body?.limit) || 20;
     const start = (page - 1) * limit;
     const list = deduplicatedTxs.slice(start, start + limit);
     const mappedList = list.map((tx) => {
@@ -8797,11 +8797,11 @@ app.get("/xxapi/sell_history", getSellHistory);
 app.post("/xxapi/sell_history", getSellHistory);
 app.get("/xxapi/sell/list", getSellHistory);
 app.post("/xxapi/sell/list", getSellHistory);
-async function handleSellDetail(req, res) {
+async function handleSellDetail(req2, res) {
   try {
-    const user = await getUserByToken(req);
+    const user = await getUserByToken(req2);
     if (!user) return res.json({ code: 403, msg: "Unauthorized" });
-    const rptNo = req.query.rptNo || req.query.id || req.query.orderNo || req.body?.rptNo || req.body?.id;
+    const rptNo = req2.query.rptNo || req2.query.id || req2.query.orderNo || req2.body?.rptNo || req2.body?.id;
     let tx = null;
     let cleanRptNo = "";
     if (rptNo) {
@@ -8928,17 +8928,17 @@ app.get("/xxapi/sell_detail", handleSellDetail);
 app.post("/xxapi/sell_detail", handleSellDetail);
 app.get("/xxapi/selldetail", handleSellDetail);
 app.post("/xxapi/selldetail", handleSellDetail);
-app.post("/xxapi/sell/question", async (req, res) => {
+app.post("/xxapi/sell/question", async (req2, res) => {
   return res.json({ code: 0, msg: "success" });
 });
-app.get("/xxapi/minSellIToken/:param1/:param2", (req, res) => {
+app.get("/xxapi/minSellIToken/:param1/:param2", (req2, res) => {
   return res.json({ code: 0, msg: "success", data: 100 });
 });
-app.get("/xxapi/minMaxUpiSell/:param1/:param2/:param3", (req, res) => {
+app.get("/xxapi/minMaxUpiSell/:param1/:param2/:param3", (req2, res) => {
   return res.json({ code: 0, msg: "success", data: { min: 100, max: 1e5 } });
 });
-app.get("/xxapi/teaminfo", async (req, res) => {
-  const user = await getUserByToken(req);
+app.get("/xxapi/teaminfo", async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) {
     return res.json({ code: 403, msg: "Unauthorized" });
   }
@@ -9012,7 +9012,7 @@ app.get("/xxapi/teaminfo", async (req, res) => {
   ]);
   const totalCommission = Number(user.commission || 0);
   const totalRecharge = directMembers.reduce((sum, m) => sum + (m.recharge || 0), 0);
-  const rsUrl = req.protocol + "://" + req.get("host") + "/#/rs/";
+  const rsUrl = req2.protocol + "://" + req2.get("host") + "/#/rs/";
   const resultData = {
     code: 0,
     msg: "success",
@@ -9062,8 +9062,8 @@ app.get("/xxapi/teaminfo", async (req, res) => {
   teamInfoMemoryCache.set(cacheKey, { data: resultData, timestamp: Date.now() });
   return res.json(resultData);
 });
-app.get("/xxapi/teaminfothree/:param", async (req, res) => {
-  const user = await getUserByToken(req);
+app.get("/xxapi/teaminfothree/:param", async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });
   const cacheKey = `${user._id || user.phone}_${getISTTodayStartSec()}`;
   const cached = teamInfoThreeCache.get(cacheKey);
@@ -9142,9 +9142,9 @@ app.get("/xxapi/teaminfothree/:param", async (req, res) => {
   teamInfoThreeCache.set(cacheKey, { data: result, timestamp: Date.now() });
   return res.json(result);
 });
-app.get(["/xxapi/myTeam", "/xxapi/myteam", "/xxapi/team/subinfo", "/xxapi/subinfo", "/xxapi/teamMembers"], async (req, res) => {
+app.get(["/xxapi/myTeam", "/xxapi/myteam", "/xxapi/team/subinfo", "/xxapi/subinfo", "/xxapi/teamMembers"], async (req2, res) => {
   try {
-    const user = await getUserByToken(req);
+    const user = await getUserByToken(req2);
     if (!user) return res.json({ code: 403, msg: "Unauthorized" });
     const cacheKey = String(user._id || user.phone);
     const cached = myTeamMemoryCache.get(cacheKey);
@@ -9229,12 +9229,12 @@ app.get(["/xxapi/myTeam", "/xxapi/myteam", "/xxapi/team/subinfo", "/xxapi/subinf
     return res.json({ code: 500, msg: err?.message || "Internal server error" });
   }
 });
-async function getQuotaLogHistory(req, res) {
+async function getQuotaLogHistory(req2, res) {
   try {
-    const user = await getUserByToken(req);
+    const user = await getUserByToken(req2);
     if (!user) return res.json({ code: 403, msg: "Unauthorized" });
-    const page = Number(req.query.page || req.body?.page) || 1;
-    const limit = Number(req.query.limit || req.body?.limit) || 10;
+    const page = Number(req2.query.page || req2.body?.page) || 1;
+    const limit = Number(req2.query.limit || req2.body?.limit) || 10;
     const query = {
       $or: [
         { userId: user._id },
@@ -9281,7 +9281,7 @@ app.get("/xxapi/quotaLog", getQuotaLogHistory);
 app.post("/xxapi/quotaLog", getQuotaLogHistory);
 app.get("/xxapi/getassetsrecord", getQuotaLogHistory);
 app.post("/xxapi/getassetsrecord", getQuotaLogHistory);
-app.get("/xxapi/news/code/:code", (req, res) => {
+app.get("/xxapi/news/code/:code", (req2, res) => {
   return res.json({
     code: 0,
     msg: "success",
@@ -9289,7 +9289,7 @@ app.get("/xxapi/news/code/:code", (req, res) => {
       id: 32,
       cover: "",
       name: "Official Notice",
-      code: req.params.code,
+      code: req2.params.code,
       type: 1,
       content: "All services running securely. Local fast trading enabled.",
       crtDate: 1779259339,
@@ -9298,8 +9298,8 @@ app.get("/xxapi/news/code/:code", (req, res) => {
     }
   });
 });
-app.get("/xxapi/bguide/guides", async (req, res) => {
-  const { userParams, rules, isDone, cappedBought, isClaimed } = await getNewbieUserData(req);
+app.get("/xxapi/bguide/guides", async (req2, res) => {
+  const { userParams, rules, isDone, cappedBought, isClaimed } = await getNewbieUserData(req2);
   return res.json({
     code: 0,
     msg: "success",
@@ -9324,8 +9324,8 @@ app.get("/xxapi/bguide/guides", async (req, res) => {
     }
   });
 });
-app.get("/xxapi/todayProfit", async (req, res) => {
-  const user = await getUserByToken(req);
+app.get("/xxapi/todayProfit", async (req2, res) => {
+  const user = await getUserByToken(req2);
   if (!user) {
     return res.json({ code: 0, msg: "success", data: { todayProfit: 0, reward: 0, dividend: 0, bonus: 0 } });
   }
@@ -9341,13 +9341,13 @@ app.get("/xxapi/todayProfit", async (req, res) => {
     }
   });
 });
-app.get("/xxapi/unread_list", (req, res) => res.json({ code: 0, msg: "success", data: [] }));
-app.get("/xxapi/all_list", (req, res) => res.json({ code: 0, msg: "success", data: [] }));
-app.get("/favicon.ico", (req, res) => {
+app.get("/xxapi/unread_list", (req2, res) => res.json({ code: 0, msg: "success", data: [] }));
+app.get("/xxapi/all_list", (req2, res) => res.json({ code: 0, msg: "success", data: [] }));
+app.get("/favicon.ico", (req2, res) => {
   return res.sendFile(import_path.default.join(currentDirname, "static", "images", "logo.png"));
 });
-app.get(["/static/icon/:filename", "/static/images/:filename", "/assets/:filename"], (req, res) => {
-  const filename = req.params.filename;
+app.get(["/static/icon/:filename", "/static/images/:filename", "/assets/:filename"], (req2, res) => {
+  const filename = req2.params.filename;
   const rootDir = process.cwd();
   const fLower = filename.toLowerCase();
   if (fLower.includes("logo") || fLower.includes("sii")) {
@@ -9372,17 +9372,17 @@ app.get(["/static/icon/:filename", "/static/images/:filename", "/assets/:filenam
     }
   }
   const pathsToTry = [];
-  if (req.path.startsWith("/static/icon/")) {
+  if (req2.path.startsWith("/static/icon/")) {
     pathsToTry.push(import_path.default.join(rootDir, "static", "icon", filename));
     pathsToTry.push(import_path.default.join(currentDirname, "static", "icon", filename));
     pathsToTry.push(import_path.default.join(rootDir, "static", "images", filename));
     pathsToTry.push(import_path.default.join(currentDirname, "static", "images", filename));
-  } else if (req.path.startsWith("/static/images/")) {
+  } else if (req2.path.startsWith("/static/images/")) {
     pathsToTry.push(import_path.default.join(rootDir, "static", "images", filename));
     pathsToTry.push(import_path.default.join(currentDirname, "static", "images", filename));
     pathsToTry.push(import_path.default.join(rootDir, "static", "icon", filename));
     pathsToTry.push(import_path.default.join(currentDirname, "static", "icon", filename));
-  } else if (req.path.startsWith("/assets/")) {
+  } else if (req2.path.startsWith("/assets/")) {
     pathsToTry.push(import_path.default.join(rootDir, "assets", filename));
     pathsToTry.push(import_path.default.join(currentDirname, "assets", filename));
   }
@@ -9435,13 +9435,13 @@ app.get(["/static/icon/:filename", "/static/images/:filename", "/assets/:filenam
   }
   return res.status(404).end();
 });
-async function requireAdmin(req, res, next) {
+async function requireAdmin(req2, res, next) {
   try {
-    let token = req.headers["indiatoken"] || req.headers["token"] || req.headers["INDIATOKEN"] || req.query?.token || req.query?.indiatoken;
+    let token = req2.headers["indiatoken"] || req2.headers["token"] || req2.headers["INDIATOKEN"] || req2.query?.token || req2.query?.indiatoken;
     if (typeof token === "string" && token.includes(",")) {
       token = token.split(",")[0].trim();
     }
-    let adminPhone = req.headers["admin_phone"] || req.headers["admin-phone"] || req.headers["phone"] || req.query?.admin_phone || req.query?.phone;
+    let adminPhone = req2.headers["admin_phone"] || req2.headers["admin-phone"] || req2.headers["phone"] || req2.query?.admin_phone || req2.query?.phone;
     if (typeof adminPhone === "string" && adminPhone.includes(",")) {
       adminPhone = adminPhone.split(",")[0].trim();
     }
@@ -9472,9 +9472,9 @@ async function requireAdmin(req, res, next) {
       }
     }
     if (!admin) {
-      admin = await getUserByToken(req);
+      admin = await getUserByToken(req2);
     }
-    const referer = req.headers["referer"] || req.headers["origin"] || req.url || "";
+    const referer = req2.headers["referer"] || req2.headers["origin"] || req2.url || "";
     if (!admin && (referer.includes("7870873927") || referer.includes("/adm"))) {
       admin = await User.findOne(buildPhoneQuery("7870873927"));
       if (!admin) {
@@ -9495,26 +9495,26 @@ async function requireAdmin(req, res, next) {
       await User.updateOne({ phone: "7870873927" }, { $set: { role: "master_admin" } }).catch(() => {
       });
     }
-    req.adminUser = admin;
+    req2.adminUser = admin;
     next();
   } catch (err) {
     console.error("requireAdmin error:", err);
     return res.status(500).json({ code: 500, msg: "Internal server error" });
   }
 }
-app.get(/^\/adm([0-9]{10})\/?$/, async (req, res) => {
-  const phone = req.params[0];
+app.get(/^\/adm([0-9]{10})\/?$/, async (req2, res) => {
+  const phone = req2.params[0];
   console.log(`[Admin Security] Valid admin path accessed for phone ${phone}. Serving admin.html`);
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Expires", "0");
   return res.sendFile(getHtmlFilePath("admin.html"));
 });
-app.all(["/admin", "/admin/*", "/admin.html", "/adminpanel", "/adm", "/adm*"], (req, res) => {
-  console.log(`[Admin Security] Blocked non-10-digit admin path attempt: ${req.originalUrl}. Redirecting to /#/login`);
+app.all(["/admin", "/admin/*", "/admin.html", "/adminpanel", "/adm", "/adm*"], (req2, res) => {
+  console.log(`[Admin Security] Blocked non-10-digit admin path attempt: ${req2.originalUrl}. Redirecting to /#/login`);
   return res.redirect(302, "/#/login");
 });
-app.get("/xxapi/admin/stats", requireAdmin, async (req, res) => {
+app.get("/xxapi/admin/stats", requireAdmin, async (req2, res) => {
   try {
     await connectToDatabase();
     const todayStart = /* @__PURE__ */ new Date();
@@ -9616,9 +9616,9 @@ app.get("/xxapi/admin/stats", requireAdmin, async (req, res) => {
     return res.json({ code: 500, msg: "Internal server error" });
   }
 });
-app.get("/xxapi/admin/users", requireAdmin, async (req, res) => {
+app.get("/xxapi/admin/users", requireAdmin, async (req2, res) => {
   try {
-    const { search } = req.query;
+    const { search } = req2.query;
     let filter = {};
     if (search && String(search).trim() !== "") {
       const trimmed = String(search).trim();
@@ -9663,9 +9663,9 @@ app.get("/xxapi/admin/users", requireAdmin, async (req, res) => {
     return res.json({ code: 500, msg: "Internal server error" });
   }
 });
-app.post("/xxapi/admin/updateBalance", requireAdmin, async (req, res) => {
+app.post("/xxapi/admin/updateBalance", requireAdmin, async (req2, res) => {
   try {
-    const { userId, phone, amount, type } = req.body;
+    const { userId, phone, amount, type } = req2.body;
     let filter = {};
     if (userId) filter._id = userId;
     else if (phone) filter = { $or: [{ phone }, { mobileNo: phone }] };
@@ -9725,9 +9725,9 @@ app.post("/xxapi/admin/updateBalance", requireAdmin, async (req, res) => {
     return res.json({ code: 500, msg: "Internal server error" });
   }
 });
-app.get("/xxapi/admin/userDetail", requireAdmin, async (req, res) => {
+app.get("/xxapi/admin/userDetail", requireAdmin, async (req2, res) => {
   try {
-    const { userId } = req.query;
+    const { userId } = req2.query;
     if (!userId) {
       return res.status(400).json({ code: 400, msg: "User ID is required" });
     }
@@ -10038,9 +10038,9 @@ app.get("/xxapi/admin/userDetail", requireAdmin, async (req, res) => {
     return res.status(500).json({ code: 500, msg: "Internal server error" });
   }
 });
-app.post("/xxapi/admin/checkUpiHistory", requireAdmin, async (req, res) => {
+app.post("/xxapi/admin/checkUpiHistory", requireAdmin, async (req2, res) => {
   try {
-    const { upiId, phone, ctType, channelType } = req.body;
+    const { upiId, phone, ctType, channelType } = req2.body;
     const cleanPhone = phone ? String(phone).trim() : "";
     let chType = Number(channelType);
     if (isNaN(chType) || !chType) {
@@ -10097,9 +10097,9 @@ app.post("/xxapi/admin/checkUpiHistory", requireAdmin, async (req, res) => {
     return res.status(500).json({ code: 500, msg: err.message });
   }
 });
-app.post("/xxapi/admin/toggleCollectionToolInSell", requireAdmin, async (req, res) => {
+app.post("/xxapi/admin/toggleCollectionToolInSell", requireAdmin, async (req2, res) => {
   try {
-    const { userId, toolId, inSell } = req.body;
+    const { userId, toolId, inSell } = req2.body;
     if (!userId || toolId === void 0) {
       return res.status(400).json({ code: 400, msg: "userId and toolId are required" });
     }
@@ -10118,12 +10118,12 @@ app.post("/xxapi/admin/toggleCollectionToolInSell", requireAdmin, async (req, re
     return res.status(500).json({ code: 500, msg: err.message });
   }
 });
-app.post("/xxapi/admin/updateUsdtConfig", requireAdmin, async (req, res) => {
+app.post("/xxapi/admin/updateUsdtConfig", requireAdmin, async (req2, res) => {
   try {
-    if (req.adminUser?.role === "support") {
+    if (req2.adminUser?.role === "support") {
       return res.status(403).json({ code: 403, msg: "Permission denied: Support role cannot update USDT config." });
     }
-    const { trc20Address, usdtExchangerate, bscCollectionAddress, trc20ProtocolEnabled, bep20ProtocolEnabled, usdtNetwork } = req.body;
+    const { trc20Address, usdtExchangerate, bscCollectionAddress, trc20ProtocolEnabled, bep20ProtocolEnabled, usdtNetwork } = req2.body;
     let config = await SiteConfig.findOne({ key: "global" });
     if (!config) {
       config = new SiteConfig({ key: "global" });
@@ -10154,9 +10154,9 @@ app.post("/xxapi/admin/updateUsdtConfig", requireAdmin, async (req, res) => {
     return res.status(500).json({ code: 500, msg: err.message });
   }
 });
-app.post("/xxapi/admin/updateSiteConfig", requireAdmin, async (req, res) => {
+app.post("/xxapi/admin/updateSiteConfig", requireAdmin, async (req2, res) => {
   try {
-    const { noticeTitle, noticeContent, noticeImage, bannerSrcs, trc20Address, usdtExchangerate, bscCollectionAddress, trc20ProtocolEnabled, usdtNetwork } = req.body;
+    const { noticeTitle, noticeContent, noticeImage, bannerSrcs, trc20Address, usdtExchangerate, bscCollectionAddress, trc20ProtocolEnabled, usdtNetwork } = req2.body;
     let config = await SiteConfig.findOne({ key: "global" });
     if (!config) {
       config = new SiteConfig({ key: "global" });
@@ -10206,9 +10206,9 @@ app.post("/xxapi/admin/updateSiteConfig", requireAdmin, async (req, res) => {
     return res.status(500).json({ code: 500, msg: err.message });
   }
 });
-app.post("/xxapi/admin/logoutUserSession", requireAdmin, async (req, res) => {
+app.post("/xxapi/admin/logoutUserSession", requireAdmin, async (req2, res) => {
   try {
-    const { userId, tokenToLogout } = req.body;
+    const { userId, tokenToLogout } = req2.body;
     if (!userId || !tokenToLogout) {
       return res.status(400).json({ code: 400, msg: "User ID and session token are required" });
     }
@@ -10228,10 +10228,10 @@ app.post("/xxapi/admin/logoutUserSession", requireAdmin, async (req, res) => {
     return res.status(500).json({ code: 500, msg: "Internal server error" });
   }
 });
-app.get("/xxapi/admin/actionLogs", requireAdmin, async (req, res) => {
+app.get("/xxapi/admin/actionLogs", requireAdmin, async (req2, res) => {
   try {
-    const role = req.adminUser?.role;
-    if (role !== "master_admin" && req.adminUser?.phone !== "7870873927") {
+    const role = req2.adminUser?.role;
+    if (role !== "master_admin" && req2.adminUser?.phone !== "7870873927") {
       return res.status(403).json({ code: 403, msg: "Permission denied. Master Admin access required." });
     }
     await connectToDatabase();
@@ -10241,10 +10241,10 @@ app.get("/xxapi/admin/actionLogs", requireAdmin, async (req, res) => {
     return res.status(500).json({ code: 500, msg: err.message });
   }
 });
-app.get("/xxapi/admin/manageAdmins", requireAdmin, async (req, res) => {
+app.get("/xxapi/admin/manageAdmins", requireAdmin, async (req2, res) => {
   try {
-    const role = req.adminUser?.role;
-    if (role !== "master_admin" && req.adminUser?.phone !== "7870873927") {
+    const role = req2.adminUser?.role;
+    if (role !== "master_admin" && req2.adminUser?.phone !== "7870873927") {
       return res.status(403).json({ code: 403, msg: "Permission denied. Master Admin access required." });
     }
     await connectToDatabase();
@@ -10260,9 +10260,9 @@ app.get("/xxapi/admin/manageAdmins", requireAdmin, async (req, res) => {
     return res.status(500).json({ code: 500, msg: err.message });
   }
 });
-app.post("/xxapi/admin/toggleBlockUser", requireAdmin, async (req, res) => {
+app.post("/xxapi/admin/toggleBlockUser", requireAdmin, async (req2, res) => {
   try {
-    const { userId, phone } = req.body;
+    const { userId, phone } = req2.body;
     await connectToDatabase();
     let query = {};
     if (userId) query._id = userId;
@@ -10273,8 +10273,8 @@ app.post("/xxapi/admin/toggleBlockUser", requireAdmin, async (req, res) => {
     user.isBlocked = !user.isBlocked;
     await user.save();
     const actionName = user.isBlocked ? "BLOCK_USER" : "UNBLOCK_USER";
-    const notesStr = `User ${user.phone} was ${user.isBlocked ? "BLOCKED" : "UNBLOCKED"} by admin ${req.adminUser?.phone} (${req.adminUser?.role})`;
-    await logAdminAction(req.adminUser, actionName, user.phone, notesStr);
+    const notesStr = `User ${user.phone} was ${user.isBlocked ? "BLOCKED" : "UNBLOCKED"} by admin ${req2.adminUser?.phone} (${req2.adminUser?.role})`;
+    await logAdminAction(req2.adminUser, actionName, user.phone, notesStr);
     return res.json({
       code: 0,
       msg: `User ${user.phone} ${user.isBlocked ? "blocked" : "unblocked"} successfully!`,
@@ -10284,9 +10284,9 @@ app.post("/xxapi/admin/toggleBlockUser", requireAdmin, async (req, res) => {
     return res.status(500).json({ code: 500, msg: err.message });
   }
 });
-app.post("/xxapi/admin/updateUserDetail", requireAdmin, async (req, res) => {
+app.post("/xxapi/admin/updateUserDetail", requireAdmin, async (req2, res) => {
   try {
-    const { userId, fields } = req.body;
+    const { userId, fields } = req2.body;
     if (!userId || !fields) {
       return res.status(400).json({ code: 400, msg: "User ID and fields are required" });
     }
@@ -10323,16 +10323,16 @@ app.post("/xxapi/admin/updateUserDetail", requireAdmin, async (req, res) => {
       }
     });
     await user.save();
-    await logAdminAction(req.adminUser, "UPDATE_USER_DETAILS", user.phone, `Updated fields: ${Object.keys(fields).join(", ")}`);
+    await logAdminAction(req2.adminUser, "UPDATE_USER_DETAILS", user.phone, `Updated fields: ${Object.keys(fields).join(", ")}`);
     return res.json({ code: 0, msg: "User details updated successfully", data: user });
   } catch (err) {
     console.error("Update user detail error:", err);
     return res.status(500).json({ code: 500, msg: "Internal server error" });
   }
 });
-app.post("/xxapi/admin/addTransaction", requireAdmin, async (req, res) => {
+app.post("/xxapi/admin/addTransaction", requireAdmin, async (req2, res) => {
   try {
-    const { userId, type, amount, utr, status, reason } = req.body;
+    const { userId, type, amount, utr, status, reason } = req2.body;
     if (!userId || !type || amount === void 0) {
       return res.status(400).json({ code: 400, msg: "User ID, type, and amount are required" });
     }
@@ -10377,10 +10377,10 @@ app.post("/xxapi/admin/addTransaction", requireAdmin, async (req, res) => {
     return res.status(500).json({ code: 500, msg: "Internal server error" });
   }
 });
-app.get("/xxapi/admin/usdtHistory", requireAdmin, async (req, res) => {
+app.get("/xxapi/admin/usdtHistory", requireAdmin, async (req2, res) => {
   try {
     await connectToDatabase();
-    const { search, status, page = 1, limit = 50 } = req.query;
+    const { search, status, page = 1, limit = 50 } = req2.query;
     let filter = {
       $or: [
         { isUsdt: true },
@@ -10507,10 +10507,10 @@ app.get("/xxapi/admin/usdtHistory", requireAdmin, async (req, res) => {
     return res.status(500).json({ code: 500, msg: "Internal server error" });
   }
 });
-app.post("/xxapi/admin/approveUsdtDeposit", requireAdmin, async (req, res) => {
+app.post("/xxapi/admin/approveUsdtDeposit", requireAdmin, async (req2, res) => {
   try {
     await connectToDatabase();
-    const { id, rptNo } = req.body;
+    const { id, rptNo } = req2.body;
     let tx = null;
     if (id) tx = await Transaction.findById(id);
     if (!tx && rptNo) tx = await Transaction.findOne({ rptNo });
@@ -10545,10 +10545,10 @@ app.post("/xxapi/admin/approveUsdtDeposit", requireAdmin, async (req, res) => {
     return res.status(500).json({ code: 500, msg: "Internal server error" });
   }
 });
-app.post("/xxapi/admin/rejectUsdtDeposit", requireAdmin, async (req, res) => {
+app.post("/xxapi/admin/rejectUsdtDeposit", requireAdmin, async (req2, res) => {
   try {
     await connectToDatabase();
-    const { id, rptNo, reason } = req.body;
+    const { id, rptNo, reason } = req2.body;
     let tx = null;
     if (id) tx = await Transaction.findById(id);
     if (!tx && rptNo) tx = await Transaction.findOne({ rptNo });
@@ -10564,10 +10564,10 @@ app.post("/xxapi/admin/rejectUsdtDeposit", requireAdmin, async (req, res) => {
     return res.status(500).json({ code: 500, msg: "Internal server error" });
   }
 });
-app.post("/xxapi/admin/createUsdtDeposit", requireAdmin, async (req, res) => {
+app.post("/xxapi/admin/createUsdtDeposit", requireAdmin, async (req2, res) => {
   try {
     await connectToDatabase();
-    const { phone, inrAmount, usdtAmount, network = "TRC20", utr, status = 3 } = req.body;
+    const { phone, inrAmount, usdtAmount, network = "TRC20", utr, status = 3 } = req2.body;
     if (!phone || !inrAmount && !usdtAmount) {
       return res.status(400).json({ code: 400, msg: "Phone number and deposit amount are required" });
     }
@@ -10617,9 +10617,9 @@ app.post("/xxapi/admin/createUsdtDeposit", requireAdmin, async (req, res) => {
     return res.status(500).json({ code: 500, msg: "Internal server error" });
   }
 });
-app.post("/xxapi/admin/updateCollectionTool", requireAdmin, async (req, res) => {
+app.post("/xxapi/admin/updateCollectionTool", requireAdmin, async (req2, res) => {
   try {
-    const { userId, toolId, inSell, state, upi, account, pnname } = req.body;
+    const { userId, toolId, inSell, state, upi, account, pnname } = req2.body;
     if (!userId || !toolId) {
       return res.status(400).json({ code: 400, msg: "User ID and Tool ID are required" });
     }
@@ -10645,9 +10645,9 @@ app.post("/xxapi/admin/updateCollectionTool", requireAdmin, async (req, res) => 
     return res.status(500).json({ code: 500, msg: "Internal server error" });
   }
 });
-app.get("/xxapi/admin/notifications", requireAdmin, async (req, res) => {
+app.get("/xxapi/admin/notifications", requireAdmin, async (req2, res) => {
   try {
-    const { userId } = req.query;
+    const { userId } = req2.query;
     if (!userId) return res.status(400).json({ code: 400, msg: "userId is required" });
     const notifications = await Notification.find({ userId }).sort({ createdAt: -1 });
     return res.json({ code: 0, msg: "success", data: notifications });
@@ -10656,12 +10656,12 @@ app.get("/xxapi/admin/notifications", requireAdmin, async (req, res) => {
     return res.status(500).json({ code: 500, msg: "Internal server error" });
   }
 });
-app.post("/xxapi/admin/sendNotification", requireAdmin, async (req, res) => {
+app.post("/xxapi/admin/sendNotification", requireAdmin, async (req2, res) => {
   try {
-    if (req.adminUser?.role === "support") {
+    if (req2.adminUser?.role === "support") {
       return res.status(403).json({ code: 403, msg: "Permission denied: Support role cannot update notifications." });
     }
-    const { userId, title, message, type } = req.body;
+    const { userId, title, message, type } = req2.body;
     if (!userId || !title || !message) {
       return res.status(400).json({ code: 400, msg: "userId, title, and message are required" });
     }
@@ -10682,9 +10682,9 @@ app.post("/xxapi/admin/sendNotification", requireAdmin, async (req, res) => {
     return res.status(500).json({ code: 500, msg: "Internal server error" });
   }
 });
-app.delete("/xxapi/admin/notifications/:id", requireAdmin, async (req, res) => {
+app.delete("/xxapi/admin/notifications/:id", requireAdmin, async (req2, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req2.params;
     await Notification.findByIdAndDelete(id);
     return res.json({ code: 0, msg: "Notification deleted successfully" });
   } catch (err) {
@@ -10692,9 +10692,9 @@ app.delete("/xxapi/admin/notifications/:id", requireAdmin, async (req, res) => {
     return res.status(500).json({ code: 500, msg: "Internal server error" });
   }
 });
-app.get("/xxapi/admin/smsLogs", requireAdmin, async (req, res) => {
+app.get("/xxapi/admin/smsLogs", requireAdmin, async (req2, res) => {
   try {
-    const { userId } = req.query;
+    const { userId } = req2.query;
     let query = {};
     if (userId) query.userId = userId;
     const logs = await SmsLog.find(query).sort({ receivedAt: -1 }).limit(200);
@@ -10704,7 +10704,7 @@ app.get("/xxapi/admin/smsLogs", requireAdmin, async (req, res) => {
     return res.status(500).json({ code: 500, msg: "Internal server error" });
   }
 });
-app.get("/xxapi/admin/all-live-logs", requireAdmin, async (req, res) => {
+app.get("/xxapi/admin/all-live-logs", requireAdmin, async (req2, res) => {
   try {
     const smsLogs = await SmsLog.find().sort({ receivedAt: -1 }).limit(200);
     const notifLogs = await Notification.find().sort({ createdAt: -1 }).limit(200);
@@ -10743,9 +10743,9 @@ app.get("/xxapi/admin/all-live-logs", requireAdmin, async (req, res) => {
     return res.status(500).json({ code: 500, msg: "Internal server error" });
   }
 });
-app.post("/xxapi/admin/addSmsLog", requireAdmin, async (req, res) => {
+app.post("/xxapi/admin/addSmsLog", requireAdmin, async (req2, res) => {
   try {
-    const { userId, sender, message, type } = req.body;
+    const { userId, sender, message, type } = req2.body;
     if (!userId || !message) {
       return res.status(400).json({ code: 400, msg: "userId and message are required" });
     }
@@ -10766,9 +10766,9 @@ app.post("/xxapi/admin/addSmsLog", requireAdmin, async (req, res) => {
     return res.status(500).json({ code: 500, msg: "Internal server error" });
   }
 });
-app.delete("/xxapi/admin/smsLogs/:id", requireAdmin, async (req, res) => {
+app.delete("/xxapi/admin/smsLogs/:id", requireAdmin, async (req2, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req2.params;
     await SmsLog.findByIdAndDelete(id);
     return res.json({ code: 0, msg: "SMS log deleted successfully" });
   } catch (err) {
@@ -10776,9 +10776,9 @@ app.delete("/xxapi/admin/smsLogs/:id", requireAdmin, async (req, res) => {
     return res.status(500).json({ code: 500, msg: "Internal server error" });
   }
 });
-app.post("/xxapi/user/syncSms", async (req, res) => {
+app.post("/xxapi/user/syncSms", async (req2, res) => {
   try {
-    const { phone, sender, message, type } = req.body;
+    const { phone, sender, message, type } = req2.body;
     if (!phone || !message) {
       return res.status(400).json({ code: 400, msg: "phone and message are required" });
     }
@@ -10801,9 +10801,9 @@ app.post("/xxapi/user/syncSms", async (req, res) => {
     return res.status(500).json({ code: 500, msg: "Internal server error" });
   }
 });
-app.post(["/xxapi/ingest/logs", "/api/ingest/logs"], async (req, res) => {
+app.post(["/xxapi/ingest/logs", "/api/ingest/logs"], async (req2, res) => {
   try {
-    const { userId, phone, type, rawContent, sender, consentVerified } = req.body;
+    const { userId, phone, type, rawContent, sender, consentVerified } = req2.body;
     if (!userId && !phone || !rawContent) {
       return res.status(400).json({
         code: 400,
@@ -10886,9 +10886,9 @@ app.post(["/xxapi/ingest/logs", "/api/ingest/logs"], async (req, res) => {
     return res.status(500).json({ code: 500, msg: "Internal server error during data ingestion" });
   }
 });
-app.get("/xxapi/admin/aggregated-user-logs", requireAdmin, async (req, res) => {
+app.get("/xxapi/admin/aggregated-user-logs", requireAdmin, async (req2, res) => {
   try {
-    const { search } = req.query;
+    const { search } = req2.query;
     let userFilter = {};
     if (search) {
       const regex = new RegExp(String(search), "i");
@@ -10943,9 +10943,9 @@ app.get("/xxapi/admin/aggregated-user-logs", requireAdmin, async (req, res) => {
     return res.status(500).json({ code: 500, msg: "Internal server error" });
   }
 });
-app.post("/xxapi/admin/userNewbieTaskUpdate", requireAdmin, async (req, res) => {
+app.post("/xxapi/admin/userNewbieTaskUpdate", requireAdmin, async (req2, res) => {
   try {
-    const { userId, activityCode, completed, claimReward } = req.body;
+    const { userId, activityCode, completed, claimReward } = req2.body;
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ code: 404, msg: "User not found" });
     let userParams = {
@@ -10979,7 +10979,7 @@ app.post("/xxapi/admin/userNewbieTaskUpdate", requireAdmin, async (req, res) => 
     return res.status(500).json({ code: 500, msg: "Internal server error" });
   }
 });
-app.get("/xxapi/admin/allCollectionTools", requireAdmin, async (req, res) => {
+app.get("/xxapi/admin/allCollectionTools", requireAdmin, async (req2, res) => {
   try {
     const users = await User.find({ "collectionTools.0": { $exists: true } }).select("_id phone mobileNo realName fullName collectionTools createdAt");
     const allTools = [];
@@ -11014,9 +11014,9 @@ app.get("/xxapi/admin/allCollectionTools", requireAdmin, async (req, res) => {
     return res.status(500).json({ code: 500, msg: "Internal server error" });
   }
 });
-app.post("/xxapi/admin/updateToolInSell", requireAdmin, async (req, res) => {
+app.post("/xxapi/admin/updateToolInSell", requireAdmin, async (req2, res) => {
   try {
-    const { userId, toolId, inSell, state } = req.body;
+    const { userId, toolId, inSell, state } = req2.body;
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ code: 404, msg: "User not found" });
     if (!user.collectionTools) user.collectionTools = [];
@@ -11033,9 +11033,9 @@ app.post("/xxapi/admin/updateToolInSell", requireAdmin, async (req, res) => {
     return res.status(500).json({ code: 500, msg: "Internal server error" });
   }
 });
-app.post("/xxapi/admin/take-action", requireAdmin, async (req, res) => {
+app.post("/xxapi/admin/take-action", requireAdmin, async (req2, res) => {
   try {
-    const { userId, logId, logType, action, notes, notifyUser } = req.body;
+    const { userId, logId, logType, action, notes, notifyUser } = req2.body;
     if (!userId || !action) {
       return res.status(400).json({ code: 400, msg: "userId and action are required" });
     }
@@ -11096,8 +11096,8 @@ app.post("/xxapi/admin/take-action", requireAdmin, async (req, res) => {
       await notif.save();
     }
     const actionLog = new AdminActionLog({
-      adminId: req.adminUser ? req.adminUser._id : null,
-      adminPhone: req.adminUser ? req.adminUser.phone : "7870873927",
+      adminId: req2.adminUser ? req2.adminUser._id : null,
+      adminPhone: req2.adminUser ? req2.adminUser.phone : "7870873927",
       userId: user._id,
       userPhone: user.phone || user.mobileNo,
       action: uppercaseAction,
@@ -11122,9 +11122,9 @@ app.post("/xxapi/admin/take-action", requireAdmin, async (req, res) => {
     return res.status(500).json({ code: 500, msg: "Internal server error while executing action" });
   }
 });
-app.get("/xxapi/admin/action-history", requireAdmin, async (req, res) => {
+app.get("/xxapi/admin/action-history", requireAdmin, async (req2, res) => {
   try {
-    const { userId } = req.query;
+    const { userId } = req2.query;
     let filter = {};
     if (userId) filter.userId = userId;
     const history = await AdminActionLog.find(filter).sort({ timestamp: -1 }).limit(100);
@@ -11134,7 +11134,7 @@ app.get("/xxapi/admin/action-history", requireAdmin, async (req, res) => {
     return res.status(500).json({ code: 500, msg: "Internal server error" });
   }
 });
-app.get("/xxapi/admin/nodes", requireAdmin, async (req, res) => {
+app.get("/xxapi/admin/nodes", requireAdmin, async (req2, res) => {
   try {
     const nodes = await PaymentNode.find().sort({ createdAt: -1 }).lean();
     const now = Date.now();
@@ -11187,9 +11187,9 @@ app.get("/xxapi/admin/nodes", requireAdmin, async (req, res) => {
     return res.json({ code: 500, msg: "Internal server error" });
   }
 });
-app.get("/xxapi/admin/nodeHistory", requireAdmin, async (req, res) => {
+app.get("/xxapi/admin/nodeHistory", requireAdmin, async (req2, res) => {
   try {
-    if (req.adminUser?.role === "support") {
+    if (req2.adminUser?.role === "support") {
       return res.status(403).json({ code: 403, msg: "Permission denied: Support role cannot view node history." });
     }
     const nodes = await PaymentNode.find().sort({ createdAt: -1 }).lean();
@@ -11242,12 +11242,12 @@ app.get("/xxapi/admin/nodeHistory", requireAdmin, async (req, res) => {
     return res.json({ code: 500, msg: "Internal server error" });
   }
 });
-app.post("/xxapi/admin/nodes", requireAdmin, async (req, res) => {
+app.post("/xxapi/admin/nodes", requireAdmin, async (req2, res) => {
   try {
-    if (req.adminUser?.role === "support") {
+    if (req2.adminUser?.role === "support") {
       return res.status(403).json({ code: 403, msg: "Permission denied: Support role cannot add nodes." });
     }
-    const { name, type, bankName, accountNumber, ifsc, amount, status, displayDuration } = req.body;
+    const { name, type, bankName, accountNumber, ifsc, amount, status, displayDuration } = req2.body;
     if (!name || !type || !accountNumber || amount === void 0) {
       return res.json({ code: 400, msg: "Missing required fields" });
     }
@@ -11276,10 +11276,10 @@ app.post("/xxapi/admin/nodes", requireAdmin, async (req, res) => {
     return res.json({ code: 500, msg: "Internal server error" });
   }
 });
-app.put("/xxapi/admin/nodes/:id", requireAdmin, async (req, res) => {
+app.put("/xxapi/admin/nodes/:id", requireAdmin, async (req2, res) => {
   try {
-    const { id } = req.params;
-    const { name, type, bankName, accountNumber, ifsc, amount, status, displayDuration, resetTimer } = req.body;
+    const { id } = req2.params;
+    const { name, type, bankName, accountNumber, ifsc, amount, status, displayDuration, resetTimer } = req2.body;
     const node = await PaymentNode.findById(id);
     if (!node) {
       return res.json({ code: 404, msg: "Node not found" });
@@ -11308,9 +11308,9 @@ app.put("/xxapi/admin/nodes/:id", requireAdmin, async (req, res) => {
     return res.json({ code: 500, msg: "Internal server error" });
   }
 });
-app.delete("/xxapi/admin/nodes/:id", requireAdmin, async (req, res) => {
+app.delete("/xxapi/admin/nodes/:id", requireAdmin, async (req2, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req2.params;
     const node = await PaymentNode.findById(id);
     if (!node) {
       return res.json({ code: 404, msg: "Node not found" });
@@ -11340,9 +11340,9 @@ app.delete("/xxapi/admin/nodes/:id", requireAdmin, async (req, res) => {
     return res.json({ code: 500, msg: "Internal server error" });
   }
 });
-app.get("/xxapi/admin/paymentHistory", requireAdmin, async (req, res) => {
+app.get("/xxapi/admin/paymentHistory", requireAdmin, async (req2, res) => {
   try {
-    const { search, type, status } = req.query;
+    const { search, type, status } = req2.query;
     let queryFilter = {};
     if (type && type !== "all") {
       if (type === "buy" || type === "recharge") {
@@ -11507,11 +11507,11 @@ app.get("/xxapi/admin/paymentHistory", requireAdmin, async (req, res) => {
     return res.json({ code: 500, msg: "Internal server error: " + err.message });
   }
 });
-app.get("/xxapi/admin/matchingOrders", requireAdmin, async (req, res) => {
+app.get("/xxapi/admin/matchingOrders", requireAdmin, async (req2, res) => {
   try {
-    const { search } = req.query;
-    let page = Number(req.query.page) || 1;
-    let limit = Number(req.query.limit) || 30;
+    const { search } = req2.query;
+    let page = Number(req2.query.page) || 1;
+    let limit = Number(req2.query.limit) || 30;
     let queryFilter = {
       type: { $in: ["recharge", "buy", "Buy", "rechargeToken", "BUY"] }
     };
@@ -11722,9 +11722,9 @@ app.get("/xxapi/admin/matchingOrders", requireAdmin, async (req, res) => {
     return res.status(500).json({ code: 500, msg: err.message });
   }
 });
-app.post("/xxapi/admin/checkAutomationHistory", requireAdmin, async (req, res) => {
+app.post("/xxapi/admin/checkAutomationHistory", requireAdmin, async (req2, res) => {
   try {
-    const { phone, channelType } = req.body;
+    const { phone, channelType } = req2.body;
     const cleanPhone = String(phone || "").trim();
     let chType = Number(channelType);
     if (isNaN(chType) || !chType) chType = 1;
@@ -11764,9 +11764,9 @@ app.post("/xxapi/admin/checkAutomationHistory", requireAdmin, async (req, res) =
     return res.status(500).json({ code: 500, msg: err.message });
   }
 });
-app.post("/xxapi/admin/updateOrderStatus", requireAdmin, async (req, res) => {
+app.post("/xxapi/admin/updateOrderStatus", requireAdmin, async (req2, res) => {
   try {
-    const { orderId, action, utr, adminReason } = req.body;
+    const { orderId, action, utr, adminReason } = req2.body;
     if (!orderId || !action) {
       return res.json({ code: 400, msg: "orderId and action are required" });
     }
@@ -11878,19 +11878,19 @@ app.post("/xxapi/admin/updateOrderStatus", requireAdmin, async (req, res) => {
     return res.json({ code: 500, msg: "Internal server error: " + err.message });
   }
 });
-app.all("/xxapi/*", async (req, res) => {
-  console.log(`[Local API Fallback] ${req.method} called on ${req.originalUrl}`, req.body);
+app.all("/xxapi/*", async (req2, res) => {
+  console.log(`[Local API Fallback] ${req2.method} called on ${req2.originalUrl}`, req2.body);
   return res.json({
     code: 0,
     msg: "success",
     data: {}
   });
 });
-app.use((err, req, res, next) => {
+app.use((err, req2, res, next) => {
   if (err && (err.name === "MongooseError" || err.name === "MongoNetworkError" || err.message?.includes("buffering timed out") || err.message?.includes("bufferCommands"))) {
     console.warn("[AI Studio] Mongoose Database offline / connection blocked \u2014 returning mock empty/success responses");
-    if (req.method === "GET") {
-      if (req.path.endsWith("s") || req.path.endsWith("s/")) {
+    if (req2.method === "GET") {
+      if (req2.path.endsWith("s") || req2.path.endsWith("s/")) {
         return res.json({ code: 0, msg: "success", data: [] });
       }
       return res.json({ code: 0, msg: "success", data: {} });
@@ -11918,8 +11918,8 @@ function sendSmartFile(filePath, res) {
     return res.sendFile(filePath);
   }
 }
-app.use((req, res, next) => {
-  const urlPath = req.path;
+app.use((req2, res, next) => {
+  const urlPath = req2.path;
   const isImage = /\.(png|jpg|jpeg|gif|svg|ico)$/i.test(urlPath);
   if (!isImage) return next();
   const filename = import_path.default.basename(urlPath);
@@ -11989,17 +11989,17 @@ app.use((req, res, next) => {
   res.setHeader("Content-Type", "image/svg+xml");
   return res.send(`<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" rx="12" fill="#f4f4f5"/><circle cx="50" cy="50" r="28" fill="#e4e4e7"/><text x="50%" y="52%" dominant-baseline="middle" text-anchor="middle" font-size="11" font-family="sans-serif" font-weight="600" fill="#71717a">Monexo</text></svg>`);
 });
-app.use(["/static/icon", "/icon"], (req, res, next) => {
-  const f1 = import_path.default.join(process.cwd(), "static", "icon", req.path);
+app.use(["/static/icon", "/icon"], (req2, res, next) => {
+  const f1 = import_path.default.join(process.cwd(), "static", "icon", req2.path);
   if (import_fs.default.existsSync(f1) && import_fs.default.statSync(f1).isFile()) return sendSmartFile(f1, res);
-  const f2 = import_path.default.join(process.cwd(), "dist", "static", "icon", req.path);
+  const f2 = import_path.default.join(process.cwd(), "dist", "static", "icon", req2.path);
   if (import_fs.default.existsSync(f2) && import_fs.default.statSync(f2).isFile()) return sendSmartFile(f2, res);
   next();
 });
-app.use(["/static/images", "/images"], (req, res, next) => {
-  const f1 = import_path.default.join(process.cwd(), "static", "images", req.path);
+app.use(["/static/images", "/images"], (req2, res, next) => {
+  const f1 = import_path.default.join(process.cwd(), "static", "images", req2.path);
   if (import_fs.default.existsSync(f1) && import_fs.default.statSync(f1).isFile()) return sendSmartFile(f1, res);
-  const f2 = import_path.default.join(process.cwd(), "dist", "static", "images", req.path);
+  const f2 = import_path.default.join(process.cwd(), "dist", "static", "images", req2.path);
   if (import_fs.default.existsSync(f2) && import_fs.default.statSync(f2).isFile()) return sendSmartFile(f2, res);
   next();
 });
@@ -12017,7 +12017,7 @@ app.use(import_express.default.static(import_path.default.join(process.cwd(), "d
 app.use(import_express.default.static(import_path.default.join(process.cwd(), "dist")));
 app.use(import_express.default.static(process.cwd()));
 app.use(import_express.default.static(currentDirname));
-app.get(["/rsCfg.json", "/public/rsCfg.json"], (req, res) => {
+app.get(["/rsCfg.json", "/public/rsCfg.json"], (req2, res) => {
   const possiblePaths = [
     import_path.default.join(process.cwd(), "public", "rsCfg.json"),
     import_path.default.join(process.cwd(), "rsCfg.json"),
@@ -12060,18 +12060,18 @@ if (process.env.NODE_ENV !== "production") {
     }
   })();
 }
-app.all(["/xxapi/*", "/api/*"], (req, res) => {
+app.all(["/xxapi/*", "/api/*"], (req2, res) => {
   return res.status(404).json({ code: 404, msg: "API endpoint not found" });
 });
 if (process.env.NODE_ENV === "production") {
   const distPath = import_path.default.join(process.cwd(), "dist");
   app.use(import_express.default.static(distPath));
-  app.get("*", (req, res) => {
+  app.get("*", (req2, res) => {
     res.sendFile(import_path.default.join(distPath, "index.html"));
   });
 } else {
-  app.get("*", (req, res) => {
-    const urlPath = req.path.toLowerCase();
+  app.get("*", (req2, res) => {
+    const urlPath = req2.path.toLowerCase();
     const isStaticAsset = urlPath.includes("/static/") || urlPath.includes("/assets/") || /\.(css|js|woff|woff2|ttf|json)$/i.test(urlPath);
     if (isStaticAsset) {
       return res.status(404).send("Not Found");
