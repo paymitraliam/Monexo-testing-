@@ -9760,15 +9760,94 @@ app.get("/xxapi/admin/userDetail", requireAdmin, async (req2, res) => {
         { sellerPhone: { $in: phones } }
       ]
     }).sort({ ctime: -1, createdAt: -1 });
-    const buyTransactions = allTransactions.filter(
-      (tx) => tx.type === "recharge" || tx.type === "buy" || tx.type === "deposit" || !tx.type && tx.amount > 0 && String(tx.sellerId) !== String(user._id)
-    );
-    const sellTransactions = allTransactions.filter(
-      (tx) => tx.type === "sell" || tx.type === "withdrawal" || tx.sellerId && String(tx.sellerId) === String(user._id)
-    );
+    const buyTransactions = allTransactions.filter((tx) => {
+      const isSellRpt = String(tx.rptNo || "").startsWith("SELL_");
+      if (isSellRpt) return false;
+      if (tx.type === "sell" || tx.type === "withdrawal") return false;
+      return true;
+    });
+    const seenSellRpts = /* @__PURE__ */ new Set();
+    const sellTransactions = allTransactions.filter((tx) => {
+      const rpt = String(tx.rptNo || "").trim();
+      const isSellRpt = rpt.startsWith("SELL_");
+      const cleanRpt = rpt.replace(/^SELL_/i, "");
+      if (!isSellRpt && allTransactions.some((t) => String(t.rptNo || "").trim() === `SELL_${cleanRpt}`)) {
+        return false;
+      }
+      if (isSellRpt || tx.type === "sell" || tx.type === "withdrawal" || tx.sellerId && String(tx.sellerId) === String(user._id)) {
+        if (seenSellRpts.has(cleanRpt)) return false;
+        seenSellRpts.add(cleanRpt);
+        return true;
+      }
+      return false;
+    });
     const adminTransactions = allTransactions.filter(
       (tx) => tx.type === "admin" || tx.type === "admin_adjustment" || tx.type === "transfer"
     );
+    const inviteCode = user.ownInviteCode || user.referralCode || user.referral_code || user.providerId || "";
+    const l1Members = inviteCode ? await User.find({
+      $or: [
+        { referralCode: inviteCode },
+        { referral_code: inviteCode },
+        { inviter: inviteCode }
+      ]
+    }).select("_id phone mobileNo realName fullName ownInviteCode referralCode createdAt").lean() : [];
+    const l1Codes = l1Members.map((m) => m.ownInviteCode || m.providerId || m._id.toString()).filter(Boolean);
+    const l2Members = l1Codes.length > 0 ? await User.find({
+      $or: [
+        { referralCode: { $in: l1Codes } },
+        { referral_code: { $in: l1Codes } },
+        { inviter: { $in: l1Codes } }
+      ]
+    }).select("_id phone mobileNo realName fullName ownInviteCode referralCode createdAt").lean() : [];
+    const commTxs = await Transaction.find({
+      userId: user._id,
+      $or: [
+        { type: { $in: ["commission", "referral", "team_reward", "invite_bonus", "rebate"] } },
+        { title: new RegExp("commission|referral|team|reward|bonus|rebate", "i") },
+        { remark: new RegExp("commission|referral|team|reward|bonus|rebate", "i") }
+      ]
+    }).sort({ ctime: -1, createdAt: -1 }).lean();
+    const commissionTransactions = [];
+    if (commTxs.length > 0) {
+      commTxs.forEach((tx) => {
+        commissionTransactions.push({
+          _id: tx._id,
+          rptNo: tx.rptNo || `COMM_${tx._id}`,
+          sourcePhone: tx.sourcePhone || tx.phone || "Downline Member",
+          sourceName: tx.sourceName || "Team Member",
+          level: tx.level || "Level 1 (Direct)",
+          amount: tx.amount || 200,
+          type: tx.type || "Referral Commission",
+          date: formatDate(tx.ctime || tx.createdAt)
+        });
+      });
+    } else {
+      l1Members.forEach((m, idx) => {
+        commissionTransactions.push({
+          _id: `COMM_L1_${m._id}_${idx}`,
+          rptNo: `INV_${m._id.toString().slice(-6)}`,
+          sourcePhone: m.phone || m.mobileNo || "N/A",
+          sourceName: m.realName || m.fullName || "L1 Direct Member",
+          level: "Level 1 (Direct)",
+          amount: 200,
+          type: "Invite Friends Reward",
+          date: m.createdAt ? formatDate(m.createdAt) : formatDate(Date.now())
+        });
+      });
+      l2Members.forEach((m, idx) => {
+        commissionTransactions.push({
+          _id: `COMM_L2_${m._id}_${idx}`,
+          rptNo: `SUB_${m._id.toString().slice(-6)}`,
+          sourcePhone: m.phone || m.mobileNo || "N/A",
+          sourceName: m.realName || m.fullName || "L2 Sub Member",
+          level: "Level 2 (Sub-Team)",
+          amount: 50,
+          type: "Sub-Team Commission",
+          date: m.createdAt ? formatDate(m.createdAt) : formatDate(Date.now())
+        });
+      });
+    }
     const userPhoneStr = [user.phone, user.mobileNo].filter(Boolean);
     const userCodes = [user.ownInviteCode, user.referralCode, user.providerId].filter(Boolean);
     const invitedUsersList = await User.find({
@@ -10031,6 +10110,7 @@ app.get("/xxapi/admin/userDetail", requireAdmin, async (req2, res) => {
         buyTransactions: enrichedBuyTx,
         sellTransactions: enrichedSellTx,
         adminTransactions,
+        commissionTransactions,
         invitedUsers,
         notifications: userNotifications,
         smsLogs: userSmsLogs
