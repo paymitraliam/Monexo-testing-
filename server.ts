@@ -11522,6 +11522,17 @@ app.post('/xxapi/admin/updateBalance', requireAdmin, async (req, res) => {
   }
 });
 
+function formatServerDate(dt: any): string {
+  if (!dt) return 'N/A';
+  try {
+    const d = typeof dt === 'number' ? (dt > 1e11 ? new Date(dt) : new Date(dt * 1000)) : new Date(dt);
+    if (isNaN(d.getTime())) return 'N/A';
+    return d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+  } catch (e) {
+    return String(dt);
+  }
+}
+
 // 5. Admin Get User Detailed View
 app.get('/xxapi/admin/userDetail', requireAdmin, async (req, res) => {
   try {
@@ -11633,7 +11644,7 @@ app.get('/xxapi/admin/userDetail', requireAdmin, async (req, res) => {
           level: tx.level || 'Level 1 (Direct)',
           amount: tx.amount || 200,
           type: tx.type || 'Referral Commission',
-          date: formatDate(tx.ctime || tx.createdAt)
+          date: formatServerDate(tx.ctime || tx.createdAt)
         });
       });
     } else {
@@ -11646,7 +11657,7 @@ app.get('/xxapi/admin/userDetail', requireAdmin, async (req, res) => {
           level: 'Level 1 (Direct)',
           amount: 200,
           type: 'Invite Friends Reward',
-          date: m.createdAt ? formatDate(m.createdAt) : formatDate(Date.now())
+          date: m.createdAt ? formatServerDate(m.createdAt) : formatServerDate(Date.now())
         });
       });
 
@@ -11659,7 +11670,7 @@ app.get('/xxapi/admin/userDetail', requireAdmin, async (req, res) => {
           level: 'Level 2 (Sub-Team)',
           amount: 50,
           type: 'Sub-Team Commission',
-          date: m.createdAt ? formatDate(m.createdAt) : formatDate(Date.now())
+          date: m.createdAt ? formatServerDate(m.createdAt) : formatServerDate(Date.now())
         });
       });
     }
