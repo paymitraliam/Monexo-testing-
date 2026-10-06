@@ -803,6 +803,20 @@ async function distributeTeamCommission(buyer: any, buyAmount: number, txId?: an
             totalProfit: l1Comm
           }
         });
+        await Transaction.create({
+          userId: level1Parent._id,
+          phone: level1Parent.phone || level1Parent.mobileNo,
+          rptNo: `COMM_L1_${txId || Date.now()}_${Math.floor(Math.random()*1000)}`,
+          amount: l1Comm,
+          type: 'commission',
+          title: 'Buy Order Commission L1 (0.3%)',
+          level: 'Level 1 (Direct)',
+          sourcePhone: buyer.phone || buyer.mobileNo || '',
+          sourceName: buyer.realName || buyer.fullName || 'L1 Member',
+          payer_status: 3,
+          ctime: Math.floor(Date.now() / 1000),
+          remark: `Level 1 trade commission 0.3% (₹${l1Comm}) from ${buyer.phone || 'member'} buy order ₹${buyAmount}`
+        }).catch(() => {});
         console.log(`[Team Commission L1] Parent ${level1Parent.phone} received 0.3% (${l1Comm}) credited via $inc from buyer ${buyer.phone} (Buy: ${buyAmount})`);
       }
 
@@ -819,6 +833,20 @@ async function distributeTeamCommission(buyer: any, buyAmount: number, txId?: an
               totalProfit: l2Comm
             }
           });
+          await Transaction.create({
+            userId: level2Parent._id,
+            phone: level2Parent.phone || level2Parent.mobileNo,
+            rptNo: `COMM_L2_${txId || Date.now()}_${Math.floor(Math.random()*1000)}`,
+            amount: l2Comm,
+            type: 'commission',
+            title: 'Buy Order Commission L2 (0.2%)',
+            level: 'Level 2 (Sub-Team)',
+            sourcePhone: buyer.phone || buyer.mobileNo || '',
+            sourceName: buyer.realName || buyer.fullName || 'L2 Member',
+            payer_status: 3,
+            ctime: Math.floor(Date.now() / 1000),
+            remark: `Level 2 trade commission 0.2% (₹${l2Comm}) from ${buyer.phone || 'member'} buy order ₹${buyAmount}`
+          }).catch(() => {});
           console.log(`[Team Commission L2] Parent ${level2Parent.phone} received 0.2% (${l2Comm}) credited via $inc from buyer ${buyer.phone} (Buy: ${buyAmount})`);
         }
 
@@ -835,6 +863,20 @@ async function distributeTeamCommission(buyer: any, buyAmount: number, txId?: an
                 totalProfit: l3Comm
               }
             });
+            await Transaction.create({
+              userId: level3Parent._id,
+              phone: level3Parent.phone || level3Parent.mobileNo,
+              rptNo: `COMM_L3_${txId || Date.now()}_${Math.floor(Math.random()*1000)}`,
+              amount: l3Comm,
+              type: 'commission',
+              title: 'Buy Order Commission L3 (0.1%)',
+              level: 'Level 3 (Team)',
+              sourcePhone: buyer.phone || buyer.mobileNo || '',
+              sourceName: buyer.realName || buyer.fullName || 'L3 Member',
+              payer_status: 3,
+              ctime: Math.floor(Date.now() / 1000),
+              remark: `Level 3 trade commission 0.1% (₹${l3Comm}) from ${buyer.phone || 'member'} buy order ₹${buyAmount}`
+            }).catch(() => {});
             console.log(`[Team Commission L3] Parent ${level3Parent.phone} received 0.1% (${l3Comm}) credited via $inc from buyer ${buyer.phone} (Buy: ${buyAmount})`);
           }
         }
@@ -4728,6 +4770,43 @@ async function claimNewbieRewardAtomically(user: any): Promise<boolean> {
   });
   await newTx.save().catch(() => {});
   console.log(`[Newbie Reward] User ${targetUser.phone} atomically claimed ₹200 newbie reward. Balance is now ${targetUser.balance}`);
+
+  // Award direct inviter (Level 1 Parent ONLY) ₹200 bonus when invited user completes newbie reward
+  try {
+    const level1Parent = await findParentUser(targetUser);
+    if (level1Parent && level1Parent._id.toString() !== targetUser._id.toString()) {
+      const inviterBonusRpt = `COMM_NEWBIE_${targetUser._id}`;
+      const existingInviterTx = await Transaction.findOne({ rptNo: inviterBonusRpt });
+      if (!existingInviterTx) {
+        await User.findByIdAndUpdate(level1Parent._id, {
+          $inc: {
+            balance: 200,
+            commission: 200,
+            todayProfit: 200,
+            totalProfit: 200
+          }
+        });
+        await Transaction.create({
+          userId: level1Parent._id,
+          phone: level1Parent.phone || level1Parent.mobileNo,
+          rptNo: inviterBonusRpt,
+          amount: 200,
+          type: 'commission',
+          title: 'Invite Friends Newbie Bonus (L1)',
+          level: 'Level 1 (Direct)',
+          sourcePhone: targetUser.phone || targetUser.mobileNo || '',
+          sourceName: targetUser.realName || targetUser.fullName || 'Direct Member',
+          payer_status: 3,
+          ctime: Math.floor(Date.now() / 1000),
+          remark: `Direct member ${targetUser.phone || 'member'} completed newbie reward (+200 tokens/₹200)`
+        }).catch(() => {});
+        console.log(`[Inviter Bonus] L1 Parent ${level1Parent.phone} received ₹200 bonus because ${targetUser.phone} completed newbie reward`);
+      }
+    }
+  } catch (err) {
+    console.error('[Newbie Inviter Bonus Error]', err);
+  }
+
   return true;
 }
 
@@ -13781,41 +13860,92 @@ app.get('/xxapi/admin/userTeamCommissionHistory', requireAdmin, async (req, res)
           id: tx._id,
           sourcePhone: tx.sourcePhone || tx.phone || 'Downline Member',
           sourceName: tx.sourceName || 'Team Referral',
-          level: tx.level || 'Level 1',
-          tokens: tx.amount || 200,
-          type: tx.type || 'Referral Commission',
+          level: tx.level || (tx.rptNo?.includes('_L1_') ? 'Level 1 (Direct 0.3%)' : tx.rptNo?.includes('_L2_') ? 'Level 2 (0.2%)' : tx.rptNo?.includes('_L3_') ? 'Level 3 (0.1%)' : 'Level 1 (Direct)'),
+          tokens: tx.amount || 0,
+          type: tx.title || tx.type || 'Referral Commission',
           date: tx.ctime ? new Date(tx.ctime * 1000).toLocaleString('en-IN') : new Date().toLocaleString('en-IN'),
-          orderRef: tx.rptNo || tx.id || 'COMM_' + Date.now()
+          orderRef: tx.rptNo || String(tx._id)
         });
       });
     } else {
-      // Build team commission records from L1 members
-      l1Members.forEach((m: any, idx: number) => {
-        commissionList.push({
-          id: `COMM_L1_${m._id}_${idx}`,
-          sourcePhone: m.phone || m.mobileNo || 'N/A',
-          sourceName: m.realName || m.fullName || 'L1 Direct Member',
-          level: 'Level 1 (Direct)',
-          tokens: 200, // ₹200 / 200 Tokens
-          type: 'Invite Friends Reward',
-          date: m.createdAt ? new Date(m.createdAt).toLocaleString('en-IN') : new Date().toLocaleString('en-IN'),
-          orderRef: `INV_${m._id.toString().slice(-6)}`
-        });
-      });
+      // Build team commission records accurately for L1, L2, L3
+      // 1. L1 Direct Members Newbie Reward Completion (₹200)
+      for (const m of l1Members) {
+        const isNewbieCompleted = Boolean((m as any).newbieDone === 2 || (m as any).newbieClaimed === true || (m as any).newbieDone === true);
+        if (isNewbieCompleted) {
+          commissionList.push({
+            id: `COMM_NEWBIE_${m._id}`,
+            sourcePhone: m.phone || m.mobileNo || 'N/A',
+            sourceName: m.realName || m.fullName || 'L1 Direct Member',
+            level: 'Level 1 (Direct)',
+            tokens: 200, // ₹200 for direct L1 member completing newbie reward
+            type: 'Newbie Invite Bonus',
+            date: m.createdAt ? new Date(m.createdAt).toLocaleString('en-IN') : new Date().toLocaleString('en-IN'),
+            orderRef: `NEWBIE_${m._id.toString().slice(-6)}`
+          });
+        }
+      }
 
-      // Build team commission records from L2 members
-      l2Members.forEach((m: any, idx: number) => {
-        commissionList.push({
-          id: `COMM_L2_${m._id}_${idx}`,
-          sourcePhone: m.phone || m.mobileNo || 'N/A',
-          sourceName: m.realName || m.fullName || 'L2 Sub Member',
-          level: 'Level 2 (Sub-Team)',
-          tokens: 50, // ₹50 / 50 Tokens
-          type: 'Sub-Team Commission',
-          date: m.createdAt ? new Date(m.createdAt).toLocaleString('en-IN') : new Date().toLocaleString('en-IN'),
-          orderRef: `SUB_${m._id.toString().slice(-6)}`
-        });
-      });
+      // 2. Buy Trade Order Commissions: L1 (0.3%), L2 (0.2%), L3 (0.1%)
+      const l1UserIds = l1Members.map(m => m._id);
+      const l2UserIds = l2Members.map(m => m._id);
+
+      const l3Members = l2Members.length > 0 ? await User.find({
+        $or: [
+          { referralCode: { $in: l2Members.map(m => m.ownInviteCode || m._id.toString()).filter(Boolean) } },
+          { referral_code: { $in: l2Members.map(m => m.ownInviteCode || m._id.toString()).filter(Boolean) } },
+          { inviter: { $in: l2Members.map(m => m.ownInviteCode || m._id.toString()).filter(Boolean) } }
+        ]
+      }).select('_id phone mobileNo realName fullName createdAt').lean() : [];
+      const l3UserIds = l3Members.map(m => m._id);
+
+      const allDownlineUserIds = [...l1UserIds, ...l2UserIds, ...l3UserIds];
+
+      if (allDownlineUserIds.length > 0) {
+        const buyTxs = await Transaction.find({
+          userId: { $in: allDownlineUserIds },
+          payer_status: 3,
+          type: { $in: ['buy', 'recharge', 'buyitoken', 'deposit'] },
+          amount: { $gt: 0 }
+        }).sort({ ctime: -1 }).limit(100).lean();
+
+        const l1Set = new Set(l1UserIds.map(id => id.toString()));
+        const l2Set = new Set(l2UserIds.map(id => id.toString()));
+
+        for (const tx of buyTxs) {
+          const txUserIdStr = tx.userId ? tx.userId.toString() : '';
+          const buyAmt = Number(tx.amount) || 0;
+          if (buyAmt <= 0) continue;
+
+          let commRate = 0;
+          let levelLabel = 'Level 1 (Direct 0.3%)';
+
+          if (l1Set.has(txUserIdStr)) {
+            commRate = 0.003; // L1 = 0.3%
+            levelLabel = 'Level 1 (Direct 0.3%)';
+          } else if (l2Set.has(txUserIdStr)) {
+            commRate = 0.002; // L2 = 0.2%
+            levelLabel = 'Level 2 (Sub-Team 0.2%)';
+          } else {
+            commRate = 0.001; // L3 = 0.1%
+            levelLabel = 'Level 3 (Team 0.1%)';
+          }
+
+          const commAmount = Math.round((buyAmt * commRate) * 10000) / 10000;
+          if (commAmount > 0) {
+            commissionList.push({
+              id: `COMM_TRADE_${tx._id}`,
+              sourcePhone: tx.phone || tx.sourcePhone || 'Downline Member',
+              sourceName: tx.sourceName || 'Member Trade',
+              level: levelLabel,
+              tokens: commAmount,
+              type: `Trade Buy Commission (${commRate * 100}%)`,
+              date: tx.ctime ? new Date(tx.ctime * 1000).toLocaleString('en-IN') : new Date().toLocaleString('en-IN'),
+              orderRef: tx.rptNo || `ORDER_${tx._id.toString().slice(-6)}`
+            });
+          }
+        }
+      }
     }
 
     const totalCommissionAmt = commissionList.reduce((acc, c) => acc + (Number(c.tokens) || 0), 0);
