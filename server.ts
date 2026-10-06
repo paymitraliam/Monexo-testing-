@@ -1601,36 +1601,45 @@ async function getVerifiedUpiName(vpa: string, fallbackName?: string): Promise<s
     if (cached) return cached;
   }
 
+  const cleanFallback = (fallbackName && fallbackName.trim()) ? fallbackName.trim() : '';
+  const isGeneric = !cleanFallback || ["PayTM", "PhonePe", "MobiKwik", "Freecharge", "Airtel Pay", "Merchant Partner", "Monexo Merchant", "Verified Merchant Partner"].includes(cleanFallback);
+
+  // If a valid non-generic fallback name exists, return it immediately (<1ms) and perform lookup asynchronously in background
+  if (!isGeneric) {
+    verifiedUpiNameCache.set(cleanedVpa, cleanFallback);
+    (async () => {
+      try {
+        const res = await fetch(`https://ritik-upi-info.vercel.app/api/v2/lookup?vpa=${encodeURIComponent(cleanedVpa)}`, {
+          signal: AbortSignal.timeout(1500)
+        });
+        if (res.ok) {
+          const json: any = await res.json();
+          const verifiedName = json?.data?.name || (typeof json?.data === 'string' && json?.data ? json.data : null) || json?.name || json?.data?.payeeName;
+          if (verifiedName && typeof verifiedName === 'string' && verifiedName.trim() && verifiedName.trim().toLowerCase() !== 'unknown') {
+            verifiedUpiNameCache.set(cleanedVpa, verifiedName.trim());
+          }
+        }
+      } catch (e) {}
+    })();
+    return cleanFallback;
+  }
+
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000); // 4 seconds timeout for Vercel lookup API
     const res = await fetch(`https://ritik-upi-info.vercel.app/api/v2/lookup?vpa=${encodeURIComponent(cleanedVpa)}`, {
-      signal: controller.signal
+      signal: AbortSignal.timeout(800) // Fast 800ms timeout
     });
-    clearTimeout(timeout);
 
     if (res.ok) {
       const json: any = await res.json();
-      // Extract name strictly from json.data.name based on response format: {"status":true,"data":{"name":"Ritik Raushan Kumar"...}}
-      const verifiedName = json?.data?.name || (typeof json?.data === 'string' && json?.data ? json.data : null) || json?.name || json?.data?.accountHolderName || json?.data?.payeeName || json?.data?.beneficiaryName;
+      const verifiedName = json?.data?.name || (typeof json?.data === 'string' && json?.data ? json.data : null) || json?.name || json?.data?.payeeName;
       
       if (verifiedName && typeof verifiedName === 'string' && verifiedName.trim() && verifiedName.trim().toLowerCase() !== 'unknown') {
         const cleanName = verifiedName.trim();
         verifiedUpiNameCache.set(cleanedVpa, cleanName);
-        console.log(`[UPI Lookup Verified Success] ${cleanedVpa} => ${cleanName}`);
         return cleanName;
       }
     }
-  } catch (err: any) {
-    console.error(`[UPI Lookup API Error for ${cleanedVpa}]:`, err?.message);
-  }
-
-  // Fallback if API lookup fails or returned no name
-  if (fallbackName && fallbackName.trim() && !["PayTM", "PhonePe", "MobiKwik", "Freecharge", "Airtel Pay", "Merchant Partner", "Monexo Merchant", "Verified Merchant Partner"].includes(fallbackName.trim())) {
-    const cleanFb = fallbackName.trim();
-    verifiedUpiNameCache.set(cleanedVpa, cleanFb);
-    return cleanFb;
-  }
+  } catch (err: any) {}
 
   const handle = cleanedVpa.split('@')[0];
   let defaultResult = "Merchant Partner";
