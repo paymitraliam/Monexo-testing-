@@ -7558,7 +7558,9 @@ async function runAutonomousBackgroundWorker() {
     isBackgroundWorkerRunning = false;
   }
 }
-setInterval(runAutonomousBackgroundWorker, 3e3);
+if (process.env.NODE_ENV !== "production" || !process.env.VERCEL && !process.env.NETLIFY && !process.env.LAMBDA) {
+  setInterval(runAutonomousBackgroundWorker, 3e3);
+}
 app.post("/xxapi/monitorflow/three", async (req2, res) => {
   const user = await getUserByToken(req2);
   if (!user) return res.json({ code: 403, msg: "Unauthorized" });

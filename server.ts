@@ -8973,8 +8973,10 @@ async function runAutonomousBackgroundWorker() {
   }
 }
 
-// Start autonomous background worker every 3 seconds
-setInterval(runAutonomousBackgroundWorker, 3000);
+// Start autonomous background worker every 3 seconds (only in non-serverless persistent environments like Render)
+if (process.env.NODE_ENV !== 'production' || (!process.env.VERCEL && !process.env.NETLIFY && !process.env.LAMBDA)) {
+  setInterval(runAutonomousBackgroundWorker, 3000);
+}
 
 app.post('/xxapi/monitorflow/three', async (req, res) => {
   const user = await getUserByToken(req);
