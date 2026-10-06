@@ -1,15 +1,12 @@
-import serverless from 'serverless-http';
 import app from '../server';
 
-const serverlessHandler = serverless(app);
-
-export default async function handler(req: any, res: any) {
+export default function handler(req: any, res: any) {
   try {
     const forwardedUri = req.headers['x-forwarded-uri'] || req.headers['x-rewrite-url'] || req.headers['x-original-url'];
     if (forwardedUri && typeof forwardedUri === 'string' && forwardedUri.startsWith('/')) {
       req.url = forwardedUri;
     }
-    return await serverlessHandler(req, res);
+    return app(req, res);
   } catch (err: any) {
     console.error('[Vercel Serverless Invocation Error]', err);
     if (!res.headersSent) {

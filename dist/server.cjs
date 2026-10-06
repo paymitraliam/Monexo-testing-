@@ -1460,13 +1460,22 @@ function getDefaultCollectionTools() {
 }
 app.use((req2, res, next) => {
   const originalUrl = req2.url;
+  const forwardedUri = req2.headers["x-forwarded-uri"] || req2.headers["x-rewrite-url"] || req2.headers["x-original-url"];
+  if (forwardedUri && typeof forwardedUri === "string" && forwardedUri.startsWith("/")) {
+    req2.url = forwardedUri;
+  }
   if (req2.url.startsWith("/.netlify/functions/xxapi")) {
     req2.url = req2.url.replace("/.netlify/functions/xxapi", "/xxapi");
   } else if (req2.url.startsWith("/api/xxapi")) {
     req2.url = req2.url.replace("/api/xxapi", "/xxapi");
-  } else if (req2.url.startsWith("/api")) {
+  } else if (req2.url.startsWith("/api/index.ts")) {
+    req2.url = req2.url.replace("/api/index.ts", "");
+  } else if (req2.url.startsWith("/api/index")) {
+    req2.url = req2.url.replace("/api/index", "");
+  } else if (req2.url.startsWith("/api") && !req2.url.startsWith("/api/")) {
     req2.url = req2.url.replace("/api", "/xxapi");
   }
+  if (!req2.url || req2.url === "") req2.url = "/";
   const isFrontendRoute = [
     "/buyinrdetail",
     "/buyinrinduspay",

@@ -1788,14 +1788,25 @@ function getDefaultCollectionTools() {
 app.use((req, res, next) => {
   const originalUrl = req.url;
   
+  const forwardedUri = req.headers['x-forwarded-uri'] || req.headers['x-rewrite-url'] || req.headers['x-original-url'];
+  if (forwardedUri && typeof forwardedUri === 'string' && forwardedUri.startsWith('/')) {
+    req.url = forwardedUri;
+  }
+
   // Strip Netlify/Vercel serverless function path prefixes if present
   if (req.url.startsWith('/.netlify/functions/xxapi')) {
     req.url = req.url.replace('/.netlify/functions/xxapi', '/xxapi');
   } else if (req.url.startsWith('/api/xxapi')) {
     req.url = req.url.replace('/api/xxapi', '/xxapi');
-  } else if (req.url.startsWith('/api')) {
+  } else if (req.url.startsWith('/api/index.ts')) {
+    req.url = req.url.replace('/api/index.ts', '');
+  } else if (req.url.startsWith('/api/index')) {
+    req.url = req.url.replace('/api/index', '');
+  } else if (req.url.startsWith('/api') && !req.url.startsWith('/api/')) {
     req.url = req.url.replace('/api', '/xxapi');
   }
+
+  if (!req.url || req.url === '') req.url = '/';
 
   // Prepend /xxapi if a clean API request path is accessed without it (e.g. checkSmsNew or config)
   const isFrontendRoute = [
