@@ -542,11 +542,25 @@
 
                   vm.maxlength = targetCount;
                   vm.maxLength = targetCount;
-                  vm.count = targetCount;
                   if (vm.max !== undefined) vm.max = targetCount;
                   if (vm.digitCount !== undefined) vm.digitCount = targetCount;
                   if (vm.length !== undefined) vm.length = targetCount;
+
+                  // Configure 120-second OTP resend timer countdown
+                  vm.initValue = 120;
+                  vm.initTime = 120;
+                  vm.time = 120;
+                  if (vm.countDown !== undefined) vm.countDown = 120;
+                  if (vm.second !== undefined) vm.second = 120;
+                  if (vm.seconds !== undefined) vm.seconds = 120;
                 }
+
+                // Ensure 120-second resend timer across all auth, login, register, forgot password, and upi tools
+                ['initValue', 'initTime', 'time', 'countDown', 'second', 'seconds', 'timer', 'resendTimer', 'resendSecond', 'count'].forEach(prop => {
+                  if (vm[prop] === 60) {
+                    vm[prop] = 120;
+                  }
+                });
 
                 if (name === 'Login' || name === 'Register' || name === 'registercf' || name === 'register') {
                   vm.maxlength = 4;

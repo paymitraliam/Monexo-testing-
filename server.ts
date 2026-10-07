@@ -2199,9 +2199,9 @@ async function callExternalGetOtp(phone: string, forceResend: boolean = false) {
     const now = Date.now();
     const lastTime = lastOtpSentTimes[cleanPhone] || 0;
 
-    // Strict 60-second cooldown: Prevent multiple duplicate OTP sends per request
-    if (now - lastTime < 60000 && !forceResend) {
-      const waitSec = Math.ceil((60000 - (now - lastTime)) / 1000);
+    // Strict 120-second cooldown: Prevent multiple duplicate OTP sends per request
+    if (now - lastTime < 120000 && !forceResend) {
+      const waitSec = Math.ceil((120000 - (now - lastTime)) / 1000);
       console.log(`[callExternalGetOtp] OTP request for ${cleanPhone} suppressed (cooldown active: ${waitSec}s remaining)`);
       return { code: 0, msg: `OTP already sent. Please wait ${waitSec}s before requesting again.`, cooldown: waitSec };
     }
