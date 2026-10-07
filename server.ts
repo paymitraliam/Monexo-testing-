@@ -5346,15 +5346,11 @@ app.get('/xxapi/buyitoken/waitconfirm', async (req, res) => {
 
     let selectedUpi = (activeTx as any).ct_account || (activeTx as any).payer_upi || (activeTx as any).selected_upi || "";
     if (!selectedUpi || !selectedUpi.includes('@')) {
-      if (methodLower.includes('freecharge') || ctTypeVal === 2 || ctTypeVal === 3) {
-        selectedUpi = `${phone}@freecharge`;
-      } else if (methodLower.includes('paytm') || ctTypeVal === 8 || ctTypeVal === 9) {
-        selectedUpi = "";
-      } else if (methodLower.includes('mobikwik') || ctTypeVal === 4) {
-        selectedUpi = `${phone}@ikwik`;
-      } else if (methodLower.includes('navi') || ctTypeVal === 13) {
-        selectedUpi = `${phone}@navi`;
-      } else {
+      if (Array.isArray(user.collectionTools)) {
+        const realTool = user.collectionTools.find((t: any) => t && t.upi && String(t.upi).includes('@') && t.upi !== 'Pending verification');
+        if (realTool) selectedUpi = realTool.upi;
+      }
+      if (!selectedUpi || !selectedUpi.includes('@')) {
         selectedUpi = "";
       }
     }
@@ -5855,24 +5851,11 @@ app.get('/xxapi/buyitoken/paymentslipdetail', async (req, res) => {
     }
     
     if (!selectedPayerUpi) {
-      const phone = userObj.phone || 'user';
-      if (ctTypeVal === 8 || ctTypeVal === 9 || ctTypeVal === 16) {
-        selectedPayerUpi = "";
-      } else if (ctTypeVal === 4) {
-        selectedPayerUpi = `${phone}@ikwik`;
-      } else if (ctTypeVal === 2 || ctTypeVal === 3) {
-        selectedPayerUpi = `${phone}@freecharge`;
-      } else if (ctTypeVal === 13) {
-        selectedPayerUpi = `${phone}@navi`;
-      } else if (ctTypeVal === 14) {
-        selectedPayerUpi = "";
-      } else if (ctTypeVal === 17) {
-        selectedPayerUpi = `${phone}@supermoney`;
-      } else if (ctTypeVal === 18) {
-        selectedPayerUpi = `${phone}@bharatpe`;
-      } else if (ctTypeVal === -10 || ctTypeVal === 33) {
-        selectedPayerUpi = `${phone}@apl`;
-      } else {
+      if (Array.isArray(userObj.collectionTools)) {
+        const realTool = userObj.collectionTools.find((t: any) => t && t.upi && String(t.upi).includes('@') && t.upi !== 'Pending verification');
+        if (realTool) selectedPayerUpi = realTool.upi;
+      }
+      if (!selectedPayerUpi) {
         selectedPayerUpi = "";
       }
     }
@@ -6285,32 +6268,16 @@ app.post('/xxapi/buyitoken/pickuppaymentslip', async (req, res) => {
     if (toolIdStr.includes('paytm') || chosenCtType === 8 || chosenCtType === 9 || chosenCtType === 16) {
       selectedUpi = "";
       chosenCtType = 8;
-    } else if (toolIdStr.includes('mobikwik') || chosenCtType === 4) {
-      selectedUpi = `${phone}@ikwik`;
-      chosenCtType = 4;
-    } else if (toolIdStr.includes('freecharge') || chosenCtType === 2 || chosenCtType === 3) {
-      selectedUpi = `${phone}@freecharge`;
-      chosenCtType = 2;
-    } else if (toolIdStr.includes('navi') || chosenCtType === 13) {
-      selectedUpi = `${phone}@navi`;
-      chosenCtType = 13;
-    } else if (toolIdStr.includes('phonepebusiness') || chosenCtType === 14) {
-      selectedUpi = "";
-      chosenCtType = 14;
-    } else if (toolIdStr.includes('supermoney') || chosenCtType === 17) {
-      selectedUpi = `${phone}@supermoney`;
-      chosenCtType = 17;
-    } else if (toolIdStr.includes('bharatpe') || chosenCtType === 18) {
-      selectedUpi = `${phone}@bharatpe`;
-      chosenCtType = 18;
-    } else if (toolIdStr.includes('amazon') || chosenCtType === -10 || chosenCtType === 33) {
-      selectedUpi = `${phone}@apl`;
-      chosenCtType = -10;
     } else if (toolIdStr.includes('@')) {
       selectedUpi = toolIdStr;
     } else {
-      selectedUpi = "";
-      chosenCtType = 1;
+      if (Array.isArray(user.collectionTools)) {
+        const realTool = user.collectionTools.find((t: any) => t && t.upi && String(t.upi).includes('@') && t.upi !== 'Pending verification');
+        if (realTool) selectedUpi = realTool.upi;
+      }
+      if (!selectedUpi || !selectedUpi.includes('@')) {
+        selectedUpi = "";
+      }
     }
   }
 
@@ -6379,19 +6346,11 @@ app.post('/xxapi/buyitoken/pickuppaymentslip', async (req, res) => {
     (tx as any).payerUpi = selectedUpi;
     (tx as any).payer_tool = selectedToolName;
     const buyerVpaList: string[] = [];
-    if (selectedUpi) buyerVpaList.push(selectedUpi);
-    const uPhone = user.phone || user.mobileNo || '';
-    if (uPhone) {
-      const cleanP = String(uPhone).replace(/\D/g, '').slice(-10);
-      if (cleanP) {
-        buyerVpaList.push(`${cleanP}@ptyes`, `${cleanP}@paytm`, `${cleanP}@ptaxis`, `${cleanP}@ptsbi`, `${cleanP}-1@ybl`, `${cleanP}@ybl`, `${cleanP}@ikwik`, `${cleanP}@freecharge`);
-      }
-    }
+    if (selectedUpi && selectedUpi.includes('@')) buyerVpaList.push(selectedUpi);
     if (Array.isArray(user.collectionTools)) {
       user.collectionTools.forEach((t: any) => {
-        if (t.upi) buyerVpaList.push(String(t.upi));
-        if (t.account) buyerVpaList.push(String(t.account));
-        if (Array.isArray(t.backup_upi)) t.backup_upi.forEach((b: any) => buyerVpaList.push(String(b)));
+        if (t.upi && String(t.upi).includes('@') && t.upi !== 'Pending verification') buyerVpaList.push(String(t.upi));
+        if (Array.isArray(t.backup_upi)) t.backup_upi.forEach((b: any) => { if (b && String(b).includes('@')) buyerVpaList.push(String(b)); });
       });
     }
     (tx as any).buyerVpas = Array.from(new Set(buyerVpaList.map(v => String(v).toLowerCase().trim()).filter(Boolean)));
@@ -6400,19 +6359,11 @@ app.post('/xxapi/buyitoken/pickuppaymentslip', async (req, res) => {
     await tx.save();
   } else {
     const buyerVpaList: string[] = [];
-    if (selectedUpi) buyerVpaList.push(selectedUpi);
-    const uPhone = user.phone || user.mobileNo || '';
-    if (uPhone) {
-      const cleanP = String(uPhone).replace(/\D/g, '').slice(-10);
-      if (cleanP) {
-        buyerVpaList.push(`${cleanP}@ptyes`, `${cleanP}@paytm`, `${cleanP}@ptaxis`, `${cleanP}@ptsbi`, `${cleanP}-1@ybl`, `${cleanP}@ybl`, `${cleanP}@ikwik`, `${cleanP}@freecharge`);
-      }
-    }
+    if (selectedUpi && selectedUpi.includes('@')) buyerVpaList.push(selectedUpi);
     if (Array.isArray(user.collectionTools)) {
       user.collectionTools.forEach((t: any) => {
-        if (t.upi) buyerVpaList.push(String(t.upi));
-        if (t.account) buyerVpaList.push(String(t.account));
-        if (Array.isArray(t.backup_upi)) t.backup_upi.forEach((b: any) => buyerVpaList.push(String(b)));
+        if (t.upi && String(t.upi).includes('@') && t.upi !== 'Pending verification') buyerVpaList.push(String(t.upi));
+        if (Array.isArray(t.backup_upi)) t.backup_upi.forEach((b: any) => { if (b && String(b).includes('@')) buyerVpaList.push(String(b)); });
       });
     }
     const cleanBuyerVpas = Array.from(new Set(buyerVpaList.map(v => String(v).toLowerCase().trim()).filter(Boolean)));
@@ -6615,32 +6566,16 @@ app.post('/xxapi/buyitoken/changecttype', async (req, res) => {
     if (toolIdStr.includes('paytm') || chosenType === 8 || chosenType === 16) {
       newUpi = "";
       chosenType = 8;
-    } else if (toolIdStr.includes('mobikwik') || chosenType === 4) {
-      newUpi = `${phone}@ikwik`;
-      chosenType = 4;
-    } else if (toolIdStr.includes('freecharge') || chosenType === 2) {
-      newUpi = `${phone}@freecharge`;
-      chosenType = 2;
-    } else if (toolIdStr.includes('navi') || chosenType === 13) {
-      newUpi = `${phone}@navi`;
-      chosenType = 13;
-    } else if (toolIdStr.includes('phonepebusiness') || chosenType === 14) {
-      newUpi = "";
-      chosenType = 14;
-    } else if (toolIdStr.includes('supermoney') || chosenType === 17) {
-      newUpi = `${phone}@supermoney`;
-      chosenType = 17;
-    } else if (toolIdStr.includes('bharatpe') || chosenType === 18) {
-      newUpi = `${phone}@bharatpe`;
-      chosenType = 18;
-    } else if (toolIdStr.includes('amazon') || chosenType === -10) {
-      newUpi = `${phone}@apl`;
-      chosenType = -10;
     } else if (toolIdStr.includes('@')) {
       newUpi = toolIdStr;
     } else {
-      newUpi = "";
-      chosenType = 1;
+      if (Array.isArray(user.collectionTools)) {
+        const realTool = user.collectionTools.find((t: any) => t && t.upi && String(t.upi).includes('@') && t.upi !== 'Pending verification');
+        if (realTool) newUpi = realTool.upi;
+      }
+      if (!newUpi || !newUpi.includes('@')) {
+        newUpi = "";
+      }
     }
   }
 
@@ -9102,12 +9037,8 @@ app.post('/xxapi/monitorflow/three', async (req, res) => {
     const normCtType = getNormalizedCtType(ct_type || user.zoopayUpiType);
     const cleanMobile = String(targetPhone).replace(/@.*/, '').replace(/\D/g, '').slice(-10) || String(user.phone || '').replace(/\D/g, '').slice(-10);
 
-    if ((!upis || upis.length === 0) && (normCtType === 18 || Number(ct_type) === 18)) {
-      upis = [`${cleanMobile}@bharatpe`];
-    }
-
     if (!upis || upis.length === 0) {
-      console.log(`[Automation API] Info: Generating default UPI handles for ${targetPhone}`);
+      console.log(`[Automation API] No real UPI returned by server for ${targetPhone}`);
       if (tool) {
         if (tool.isNewDraft) {
           user.collectionTools = user.collectionTools.filter((t: any) => t.id !== tool.id);
